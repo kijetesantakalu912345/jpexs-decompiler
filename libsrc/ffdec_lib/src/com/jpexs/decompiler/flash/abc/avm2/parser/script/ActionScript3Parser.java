@@ -2848,7 +2848,7 @@ public class ActionScript3Parser {
                         usedCustomNamespaces.add(fullName);
                         lexer.pushback(s);
                     } else {
-                        if (!abc.hasDecimalSupport()) {
+                        if (!abc.hasDecimalSupport()) { // WHEN CREATING A NEW SCRIPT SEE HOW THIS IS SET WHEN IT GETS ITS ABC OBJECT!!!!!!!!!!!
                             throw new AVM2ParseException("Invalid use kind", lexer.yyline());
                         }
 
@@ -3093,7 +3093,6 @@ public class ActionScript3Parser {
         addScriptFromTree(sinitVariables, sinitNeedsActivation.getVal(), importedClasses, openedNamespaces, allOpenedNamespaces, traits, classPos, documentClass, numberContextRef.getVal());
     }
     
-    // kinda annoying but I don't think I have any pair/tuple classes I can use
     public class importsAndCustomNamespaces
     {
         public List<DottedChain> importedClasses;
@@ -3114,7 +3113,7 @@ public class ActionScript3Parser {
      * @throws IOException On I/O error
      * @throws InterruptedException On interrupt
      */
-    public importsAndCustomNamespaces parseAndReturnScriptImports(String str, String fileName, int scriptIndex, ABC abc) throws IOException, AVM2ParseException, InterruptedException
+    public importsAndCustomNamespaces parseAndReturnScriptImports(String str, String fileName, ABC abc) throws IOException, AVM2ParseException, InterruptedException
     {
         List<DottedChain> importedClasses = new ArrayList<>();
         List<NamespaceItem> openedNamespaces = new ArrayList<>();
@@ -3155,8 +3154,9 @@ public class ActionScript3Parser {
             inPackage = true;
         } else {
             publicNs = null;
-            // the only usages of fileName and scriptIndex!
-            packageInternalNs = new NamespaceItem(fileName + "$" + scriptIndex, Namespace.KIND_PRIVATE);
+            // normaly this would be the script index but from looking at usages of parser.addScript() which also have that parameter, it looks like i can get away
+            // with just saying it's 0.
+            packageInternalNs = new NamespaceItem(fileName + "$" + 0, Namespace.KIND_PRIVATE);
         }
         lexer.pushback(s);
 
