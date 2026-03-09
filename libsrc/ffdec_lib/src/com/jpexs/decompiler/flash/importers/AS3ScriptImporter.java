@@ -127,7 +127,28 @@ public class AS3ScriptImporter {
                         try{
                             newFileDotPaths.add(fileRelativePath);
                             newScriptContents.add(Helper.readTextFile(curFile.getAbsolutePath()));
-                            int indexForNewScript = newScriptContents.size() - 1;
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            // the issue is the script indices. with that -1 it tries to import script -1. idk why or how it exits early but this is probably part of that.
+                            int indexForNewScript = newScriptContents.size() /*- 1*/;
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
                             ActionScript3Parser.importsAndCustomNamespaces importedClassesAndCustomNamespaces = parser.parseAndReturnScriptImports(newScriptContents.get(indexForNewScript), fileRelativePath, NewScriptABCContainer.getABC());
                             newScriptDependencies.add(importedClassesAndCustomNamespaces);
                             for(int j = 0; j < importedClassesAndCustomNamespaces.definedCustomNamespaces.size(); j++)
@@ -165,6 +186,7 @@ public class AS3ScriptImporter {
                         //newFileDotPaths.add(fileRelativePath);
                     }
                 }
+                System.out.println("escaped for loop. amount of new scripts to add: %num%".replace("%num%", newScriptContents.size() + ""));
 
                 // compile newly imported dependencies in order! we need to do this for compile time constants that exist in other classes.
                 // At time of writing static const variables aren't treated as compile time constants anyway, but hopefully that'll be fixed/added in future.
@@ -175,14 +197,17 @@ public class AS3ScriptImporter {
                 // TODO: make this cancelable with the cancellable worker thing like the main loop is
                 for(int i = 0; i < newScriptContents.size(); i++)
                 {
+                    System.out.println("script indicies loop...");
                     if(tempMarkedScriptIndices.contains(i) || orderedScriptIndices.contains(i))
                     {
+                        System.out.println("continuing...");
                         continue;
                     }
                     int scriptIndex = i;
                     recursivelyVisitScriptForDepthFirstSearch(scriptIndex, tempMarkedScriptIndices, orderedScriptIndices, newFileDotPaths, newScriptDependencies, customDefinedNamespacesToScriptIndices, swf);
                 }
-
+                System.out.println("escaped script indicies loop.");
+                System.out.println("amount of new scripts to compile: %scriptAmount%".replace("%scriptAmount%", newScriptContents.size() + ""));
                 for(int i = 0; i < newScriptContents.size(); i++)
                 {
                     try
@@ -191,6 +216,9 @@ public class AS3ScriptImporter {
                         System.out.println("compiling %scriptName%...".replace("%scriptName%", newFileDotPaths.get(scriptIndex)));
                         parser.addScript(newScriptContents.get(scriptIndex), newFileDotPaths.get(scriptIndex), 0, 0, swf.getDocumentClass(), NewScriptABCContainer.getABC());
                         importCount++;
+                        if (listener != null) {
+                            listener.scriptImported();
+                        }
                     }
                     catch(Exception e)
                     {
@@ -198,12 +226,10 @@ public class AS3ScriptImporter {
                     }
                 }
 
-                // importCount++;
-
                 if (!newScriptContents.isEmpty()) {
                     // the next 3 functions are called because TagTreeContextMenu.addAs3ClassActionPerformed() does it.
                     ((Tag) NewScriptABCContainer).setModified(true);
-                    swf.clearAllCache();
+                    //swf.clearAllCache();
                     swf.setModified(true);
                 }
             }
@@ -287,6 +313,7 @@ public class AS3ScriptImporter {
     
     private void recursivelyVisitScriptForDepthFirstSearch(int scriptIndex, ArrayList<Integer> tempMarkedScriptIndices, ArrayList<Integer> orderedScriptIndices, ArrayList<String> newFileDotPaths, ArrayList<ActionScript3Parser.importsAndCustomNamespaces> newScriptDependencies, HashMap<String, Integer> customDefinedNamespacesToScriptIndices, SWF swf)
     {
+        System.out.println("visting " + scriptIndex);
         if(orderedScriptIndices.contains(scriptIndex))
         {
             return;
@@ -299,16 +326,20 @@ public class AS3ScriptImporter {
         ActionScript3Parser.importsAndCustomNamespaces currentScriptDependencies = newScriptDependencies.get(scriptIndex);
         for(int k = 0; k < newScriptDependencies.get(scriptIndex).importedClasses.size(); k++)
         {
+            System.out.println("checking imports...");
             recursivelyVisitScriptForDepthFirstSearch(newFileDotPaths.indexOf(currentScriptDependencies.importedClasses.get(k)), tempMarkedScriptIndices, orderedScriptIndices, newFileDotPaths, newScriptDependencies, customDefinedNamespacesToScriptIndices, swf);
         }
         for(int k = 0; k < currentScriptDependencies.usedCustomNamespaces.size(); k++)
         {
+            System.out.println("checking namespaces...");
             String currentNamespaceToCheck = currentScriptDependencies.usedCustomNamespaces.get(k).toPrintableString(new LinkedHashSet<>(), swf, true);
             if(customDefinedNamespacesToScriptIndices.containsKey(currentNamespaceToCheck))
             {
+                System.out.println("recursing...");
                 recursivelyVisitScriptForDepthFirstSearch(customDefinedNamespacesToScriptIndices.get(currentNamespaceToCheck), tempMarkedScriptIndices, orderedScriptIndices, newFileDotPaths, newScriptDependencies, customDefinedNamespacesToScriptIndices, swf);
             }
         }
+        System.out.println("adding script index: " + scriptIndex);
         orderedScriptIndices.add(0, scriptIndex);
     }
     
