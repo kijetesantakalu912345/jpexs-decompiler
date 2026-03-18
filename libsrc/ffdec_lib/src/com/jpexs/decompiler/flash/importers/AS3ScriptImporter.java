@@ -136,7 +136,7 @@ public class AS3ScriptImporter {
                             
                             
                             // the issue is the script indices. with that -1 it tries to import script -1. idk why or how it exits early but this is probably part of that.
-                            int indexForNewScript = newScriptContents.size() /*- 1*/;
+                            int indexForNewScript = newScriptContents.size() - 1;
                             
                             
                             
@@ -316,10 +316,12 @@ public class AS3ScriptImporter {
         System.out.println("visting " + scriptIndex);
         if(orderedScriptIndices.contains(scriptIndex))
         {
+            System.out.println("returning early, orderedScriptIndices.contains(scriptIndex)");
             return;
         }
         if(tempMarkedScriptIndices.contains(scriptIndex))
         {
+            System.out.println("CYCLIC IMPORT DETECTED WHILE IMPORTING NEW SCRIPTS!!!!");
             logger.log(Level.SEVERE, "CYCLIC IMPORT DETECTED WHILE IMPORTING NEW SCRIPTS!");
             // THROW AN ERROR
         }
