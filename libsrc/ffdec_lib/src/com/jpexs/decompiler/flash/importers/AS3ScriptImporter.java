@@ -97,7 +97,7 @@ public class AS3ScriptImporter {
             ArrayList<File> allFiles = recursivelySearchDirForScripts(scriptsFolder);
             ArrayList<String> newScriptContents = new ArrayList<String>();
             ArrayList<ActionScript3Parser.importsAndCustomNamespaces> newScriptDependencies = new ArrayList<ActionScript3Parser.importsAndCustomNamespaces>();
-            ArrayList<String> newFileDotPaths = new ArrayList<>();
+            //ArrayList<String> newFileDotPaths = new ArrayList<>();
 
             for(int i = 0; i < allFiles.size(); i++)
             {
@@ -120,10 +120,9 @@ public class AS3ScriptImporter {
                     // ok so in this step we also want to get the imports/namespaces. then after this loop we do a second loop to topologically sort them, and then
                     // we do a third loop where we finally compile them in order.
                     try{
-                        newFileDotPaths.add(fileRelativePath);
                         newScriptContents.add(Helper.readTextFile(curFile.getAbsolutePath()));
                         int indexForNewScript = newScriptContents.size() - 1;
-                        ActionScript3Parser parser = new ActionScript3Parser(swf.getAbcIndex()); // TODO: this should probably support more than just actionscript 3.
+                        ActionScript3Parser parser = new ActionScript3Parser(swf.getAbcIndex());
                         ActionScript3Parser.importsAndCustomNamespaces importedClassesAndCustomNamespaces = parser.parseAndReturnScriptImports(newScriptContents.get(indexForNewScript), fileRelativePath, NewScriptABCContainer.getABC());
                         newScriptDependencies.add(importedClassesAndCustomNamespaces);
                         List<DottedChain> scriptImportList = importedClassesAndCustomNamespaces.importedClasses;
@@ -158,48 +157,19 @@ public class AS3ScriptImporter {
                 }
             }
             
-            // compile newly imported dependencies in order! we need to do this for compile time constants that exist in other classes.
-            // At time of writing static const variables aren't treated as compile time constants anyway, but hopefully that'll be fixed/added in future.
-            // This is also needed for custom namespaces, as the compiler throws an error if a script tries to use a custom NS that doesn't exist.
-            // see https://en.wikipedia.org/wiki/Topological_sorting#Depth-first_search
-            ArrayList<Integer> orderedScriptIndices = new ArrayList<>(); 
-            ArrayList<Integer> tempMarkedScriptIndices = new ArrayList<>();
-            ArrayList<Integer> nextScriptIndicesToVisit = new ArrayList<>();
             // TODO: make this cancelable with the cancellable worker thing like the main loop is
             for(int i = 0; i < newScriptContents.size(); i++)
             {
-                if(tempMarkedScriptIndices.contains(i) || orderedScriptIndices.contains(i))
-                {
-                    continue;
-                }
-                nextScriptIndicesToVisit.add(i);
-                for(int j = 0; j < nextScriptIndicesToVisit.size(); j++)
-                {
-                    int scriptIndex = nextScriptIndicesToVisit.remove(0);
-                    if(orderedScriptIndices.contains(scriptIndex))
-                    {
-                        continue;
-                    }
-                    if(tempMarkedScriptIndices.contains(scriptIndex))
-                    {
-                        logger.log(Level.SEVERE, "CYCLIC IMPORT DETECTED WHILE IMPORTING NEW SCRIPTS!"); // TODO: throw an error here
-                    }
-                    tempMarkedScriptIndices.add(scriptIndex); // should i actually be adding to the front?
-                    
-                    // use this script's imports to check other scripts
-                    for(int k = 0; k < newScriptDependencies.get(scriptIndex).importedClasses.size(); k++)
-                    {
-                        // oh wait yeah no this isn't gonna work without an actual recursive function call here
-                        nextScriptIndicesToVisit.add(newFileDotPaths.indexOf(newScriptDependencies.get(scriptIndex).importedClasses.get(k)));
-                    }
-                    //tempMarkedScriptIndices.remove(tempMarkedScriptIndices.indexOf(scriptIndex)); we check for perm marks first
-                    // though yeah for memory reasons we maybe probably should remove items from there?
-                    
-                }
+                // compile newly imported dependencies in order! we need to do this for compile time constants that exist in other classes.
+                // At time of writing static const variables aren't treated as compile time constants anyway, but hopefully that'll be fixed/added in future.
+                // This is also needed for custom namespaces, as the compiler throws an error if a script tries to use a custom NS that doesn't exist.
+                // see https://en.wikipedia.org/wiki/Topological_sorting#Depth-first_search
+                ArrayList<File> orderedScripts = new ArrayList<>(); 
+                ArrayList<File> unresolvedVisitedScripts = new ArrayList<>();
+                
                 // INSIDE OF THE TRY BLOCK AT THE END
                 importCount++;
             }
-            
             
             if (!newScriptContents.isEmpty()) {
                 // the next 3 functions are called because TagTreeContextMenu.addAs3ClassActionPerformed() does it.
@@ -282,11 +252,6 @@ public class AS3ScriptImporter {
         return importCount;
     }
     
-    private void recursivelyVisitScriptsForDepthFirstSearch(int visitingScriptIndex, ArrayList<Integer> tempMarkedScriptIndices, ArrayList<Integer> permMarkedScriptIndices, ArrayList<Integer> orderedScriptIndices)
-    {
-        
-    }
-    
     private ArrayList<File> recursivelySearchDirForScripts(String scriptsFolder)
     {
         ArrayList<File> allFiles = new ArrayList<>();
@@ -327,7 +292,7 @@ public class AS3ScriptImporter {
         return allFiles;
     }
     
-    private void addNewClassBeingImported(String scriptDotPath, ABCContainerTag doAbc, SWF swf)
+    private void addNewClassBeingImported(String scriptDotPath, File scriptFile, ABCContainerTag doAbc, SWF swf)
     {
         String pkg = scriptDotPath.contains(".") ? scriptDotPath.substring(0, scriptDotPath.lastIndexOf(".")) : "";
         String classSimpleName = scriptDotPath.contains(".") ? scriptDotPath.substring(scriptDotPath.lastIndexOf(".") + 1) : scriptDotPath;
