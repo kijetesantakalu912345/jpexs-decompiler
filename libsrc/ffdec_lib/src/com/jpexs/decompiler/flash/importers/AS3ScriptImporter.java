@@ -95,120 +95,123 @@ public class AS3ScriptImporter {
         SWF swf = (openable instanceof SWF) ? (SWF) openable : ((ABC) openable).getSwf();
         
         if(NewScriptABCContainer != null){
-            try{
-                // I think I can just make one parser and reuse it? unfortunately this means for practical reasons that i need to wrap this entire thing in a try catch
-                ActionScript3Parser parser = new ActionScript3Parser(swf.getAbcIndex()); // TODO: this should probably support more than just actionscript 3.
-                ArrayList<File> allFiles = recursivelySearchDirForScripts(scriptsFolder);
-                ArrayList<String> newScriptContents = new ArrayList<>();
-                ArrayList<ActionScript3Parser.importsAndCustomNamespaces> newScriptDependencies = new ArrayList<>();
-                ArrayList<String> newFileDotPaths = new ArrayList<>();
-                HashMap<String, Integer> customDefinedNamespacesToScriptIndices = new HashMap<>(); // <custom defined NS name, script index>
+            ArrayList<File> allFiles = recursivelySearchDirForScripts(scriptsFolder);
+            ArrayList<String> newScriptContents = new ArrayList<>();
+            ArrayList<ActionScript3Parser.importsAndCustomNamespaces> newScriptDependencies = new ArrayList<>();
+            ArrayList<String> newFileDotPaths = new ArrayList<>();
+            HashMap<String, Integer> customDefinedNamespacesToScriptIndices = new HashMap<>(); // <custom defined NS name, script index>
 
-                for(int i = 0; i < allFiles.size(); i++)
+            for(int i = 0; i < allFiles.size(); i++)
+            {
+                File curFile = allFiles.get(i);
+                // TODO: check how symlinks are handled.
+                if(!curFile.getAbsolutePath().contains(scriptsFolder))
                 {
-                    File curFile = allFiles.get(i);
-                    // TODO: check how symlinks are handled.
-                    if(!curFile.getAbsolutePath().contains(scriptsFolder))
-                    {
-                        logger.log(Level.WARNING, "Found %file% while recursively searching for new scripts, ".replace("%file%", curFile.getAbsolutePath())
-                                + "which doesn't exist inside %folder%, the folder being imported.".replace("%folder%", scriptsFolder));
-                        continue;
-                    }
-                    String fileRelativePath = curFile.getAbsolutePath().substring(scriptsFolder.length());
-                    fileRelativePath = fileRelativePath.substring(0, fileRelativePath.lastIndexOf("."));
-                    fileRelativePath = fileRelativePath.replace("/", ".").replace("\\", ".");
-                    System.out.println(fileRelativePath);
-                    // does this script *not* already exist in the swf?
-                    if(packs.get(0).abc.findScriptPacksByPath(fileRelativePath, packs.get(0).allABCs).isEmpty()) // does this use the correct ABC tag
-                    {
-                        System.out.println("^ new script to import!");
-                        // ok so in this step we also want to get the imports/namespaces. then after this loop we do a second loop to topologically sort them, and then
-                        // we do a third loop where we finally compile them in order.
-                        try{
-                            newFileDotPaths.add(fileRelativePath);
-                            newScriptContents.add(Helper.readTextFile(curFile.getAbsolutePath()));
-                            int indexForNewScript = newScriptContents.size() - 1;
-                            ActionScript3Parser.importsAndCustomNamespaces importedClassesAndCustomNamespaces = parser.parseAndReturnScriptImports(newScriptContents.get(indexForNewScript), fileRelativePath, NewScriptABCContainer.getABC());
-                            newScriptDependencies.add(importedClassesAndCustomNamespaces);
-                            for(int j = 0; j < importedClassesAndCustomNamespaces.definedCustomNamespaces.size(); j++)
-                            {
-                                customDefinedNamespacesToScriptIndices.put(importedClassesAndCustomNamespaces.definedCustomNamespaces.get(j), indexForNewScript);
-                            }
-                            // debugging start
-                            List<DottedChain> scriptImportList = importedClassesAndCustomNamespaces.importedClasses;
-                            List<DottedChain> usedCustomNamespaces = importedClassesAndCustomNamespaces.usedCustomNamespaces;
-                            List<String> definedCustomNamespaces = importedClassesAndCustomNamespaces.definedCustomNamespaces;
-                            String importsOutputString = "";
-                            String usedNamespacesOutputString = "";
-                            String definedNamespacesOutputString = "";
-                            for(int j = 0; j < scriptImportList.size(); j++)
-                            {
-                                importsOutputString += "\n - [" + scriptImportList.get(j).toPrintableString(new LinkedHashSet<>(), swf, true) + "]";
-                            }
-                            for(int j = 0; j < usedCustomNamespaces.size(); j++)
-                            {
-                                usedNamespacesOutputString +=  "\n - [" + usedCustomNamespaces.get(j).toPrintableString(new LinkedHashSet<>(), swf, true)  + "]";
-                            }
-                            for(int j = 0; j < definedCustomNamespaces.size(); j++)
-                            {
-                                definedNamespacesOutputString +=  "\n - [" + definedCustomNamespaces.get(j)  + "]";
-                            }
-                            System.out.println(fileRelativePath + " imports: " + importsOutputString + "\n------\n " + fileRelativePath + " used namespaces: " + usedNamespacesOutputString + "\n------\n " + fileRelativePath + " defined namespaces: " + definedNamespacesOutputString);
-                            // debugging end
-                        }
-                        catch(Exception e)
+                    logger.log(Level.WARNING, "Found %file% while recursively searching for new scripts, ".replace("%file%", curFile.getAbsolutePath())
+                            + "which doesn't exist inside %folder%, the folder being imported.".replace("%folder%", scriptsFolder));
+                    continue;
+                }
+                String fileRelativePath = curFile.getAbsolutePath().substring(scriptsFolder.length());
+                fileRelativePath = fileRelativePath.substring(0, fileRelativePath.lastIndexOf("."));
+                fileRelativePath = fileRelativePath.replace("/", ".").replace("\\", ".");
+                System.out.println(fileRelativePath);
+                // does this script *not* already exist in the swf?
+                if(packs.get(0).abc.findScriptPacksByPath(fileRelativePath, packs.get(0).allABCs).isEmpty()) // does this use the correct ABC tag
+                {
+                    System.out.println("^ new script to import!");
+                    // ok so in this step we also want to get the imports/namespaces. then after this loop we do a second loop to topologically sort them, and then
+                    // we do a third loop where we finally compile them in order.
+                    try{
+                        newFileDotPaths.add(fileRelativePath);
+                        newScriptContents.add(Helper.readTextFile(curFile.getAbsolutePath()));
+                        int indexForNewScript = newScriptContents.size() - 1;
+                        ActionScript3Parser parser = new ActionScript3Parser(swf.getAbcIndex()); // TODO: this should probably support more than just actionscript 3.
+                        ActionScript3Parser.importsAndCustomNamespaces importedClassesAndCustomNamespaces = parser.parseAndReturnScriptImports(newScriptContents.get(indexForNewScript), fileRelativePath, NewScriptABCContainer.getABC());
+                        newScriptDependencies.add(importedClassesAndCustomNamespaces);
+                        for(int j = 0; j < importedClassesAndCustomNamespaces.definedCustomNamespaces.size(); j++)
                         {
-                            logger.log(Level.SEVERE, "Error while trying to parse imports of new scripts: " + e.getMessage());
+                            customDefinedNamespacesToScriptIndices.put(importedClassesAndCustomNamespaces.definedCustomNamespaces.get(j), indexForNewScript);
                         }
-                        // this is a script that doesn't already exist in the swf. We need to handle it differently.                    
-                        //addNewClassBeingImported(fileRelativePath, curFile, NewScriptABCContainer, swf);
-                        //newFileDotPaths.add(fileRelativePath);
-                    }
-                }
-
-                // compile newly imported dependencies in order! we need to do this for compile time constants that exist in other classes.
-                // At time of writing static const variables aren't treated as compile time constants anyway, but hopefully that'll be fixed/added in future.
-                // This is also needed for custom namespaces, as the compiler throws an error if a script tries to use a custom NS that doesn't exist.
-                // see https://en.wikipedia.org/wiki/Topological_sorting#Depth-first_search
-                ArrayList<Integer> orderedScriptIndices = new ArrayList<>(); 
-                ArrayList<Integer> tempMarkedScriptIndices = new ArrayList<>();
-                // TODO: make this cancelable with the cancellable worker thing like the main loop is
-                for(int i = 0; i < newScriptContents.size(); i++)
-                {
-                    if(tempMarkedScriptIndices.contains(i) || orderedScriptIndices.contains(i))
-                    {
-                        continue;
-                    }
-                    int scriptIndex = i;
-                    recursivelyVisitScriptForDepthFirstSearch(scriptIndex, tempMarkedScriptIndices, orderedScriptIndices, newFileDotPaths, newScriptDependencies, customDefinedNamespacesToScriptIndices, swf);
-                }
-
-                for(int i = 0; i < newScriptContents.size(); i++)
-                {
-                    try
-                    {
-                        int scriptIndex = orderedScriptIndices.get(i);
-                        System.out.println("compiling %scriptName%...".replace("%scriptName%", newFileDotPaths.get(scriptIndex)));
-                        parser.addScript(newScriptContents.get(scriptIndex), newFileDotPaths.get(scriptIndex), 0, 0, swf.getDocumentClass(), NewScriptABCContainer.getABC());
-                        importCount++;
+                        // debugging start
+                        List<DottedChain> scriptImportList = importedClassesAndCustomNamespaces.importedClasses;
+                        List<DottedChain> usedCustomNamespaces = importedClassesAndCustomNamespaces.usedCustomNamespaces;
+                        List<String> definedCustomNamespaces = importedClassesAndCustomNamespaces.definedCustomNamespaces;
+                        String importsOutputString = "";
+                        String usedNamespacesOutputString = "";
+                        String definedNamespacesOutputString = "";
+                        for(int j = 0; j < scriptImportList.size(); j++)
+                        {
+                            importsOutputString += "\n - [" + scriptImportList.get(j).toPrintableString(new LinkedHashSet<>(), swf, true) + "]";
+                        }
+                        for(int j = 0; j < usedCustomNamespaces.size(); j++)
+                        {
+                            usedNamespacesOutputString +=  "\n - [" + usedCustomNamespaces.get(j).toPrintableString(new LinkedHashSet<>(), swf, true)  + "]";
+                        }
+                        for(int j = 0; j < definedCustomNamespaces.size(); j++)
+                        {
+                            definedNamespacesOutputString +=  "\n - [" + definedCustomNamespaces.get(j)  + "]";
+                        }
+                        System.out.println(fileRelativePath + " imports: " + importsOutputString + "\n------\n " + fileRelativePath + " used namespaces: " + usedNamespacesOutputString + "\n------\n " + fileRelativePath + " defined namespaces: " + definedNamespacesOutputString);
+                        // debugging end
                     }
                     catch(Exception e)
                     {
-                        logger.log(Level.SEVERE, "Error while trying to compile new scripts: " + e.getMessage());
+                        logger.log(Level.SEVERE, "Error while trying to parse imports of new scripts: " + e.getMessage());
                     }
-                }
-
-                // importCount++;
-
-                if (!newScriptContents.isEmpty()) {
-                    // the next 3 functions are called because TagTreeContextMenu.addAs3ClassActionPerformed() does it.
-                    ((Tag) NewScriptABCContainer).setModified(true);
-                    swf.clearAllCache();
-                    swf.setModified(true);
+                    // this is a script that doesn't already exist in the swf. We need to handle it differently.                    
+                    //addNewClassBeingImported(fileRelativePath, curFile, NewScriptABCContainer, swf);
+                    //newFileDotPaths.add(fileRelativePath);
                 }
             }
-            catch (IOException e) {
-                logger.log(Level.SEVERE, "Error: IO exception from ActionScript3Parser when trying to import new scripts: " + e.getMessage() + "\nNew scripts will be ignored, existing scripts will be imported.");
+            
+            // compile newly imported dependencies in order! we need to do this for compile time constants that exist in other classes.
+            // At time of writing static const variables aren't treated as compile time constants anyway, but hopefully that'll be fixed/added in future.
+            // This is also needed for custom namespaces, as the compiler throws an error if a script tries to use a custom NS that doesn't exist.
+            // see https://en.wikipedia.org/wiki/Topological_sorting#Depth-first_search
+            ArrayList<Integer> orderedScriptIndices = new ArrayList<>(); 
+            ArrayList<Integer> tempMarkedScriptIndices = new ArrayList<>();
+            ArrayList<Integer> nextScriptIndicesToVisit = new ArrayList<>();
+            // TODO: make this cancelable with the cancellable worker thing like the main loop is
+            for(int i = 0; i < newScriptContents.size(); i++)
+            {
+                if(tempMarkedScriptIndices.contains(i) || orderedScriptIndices.contains(i))
+                {
+                    continue;
+                }
+                nextScriptIndicesToVisit.add(i);
+                for(int j = 0; j < nextScriptIndicesToVisit.size(); j++)
+                {
+                    int scriptIndex = nextScriptIndicesToVisit.remove(0);
+                    if(orderedScriptIndices.contains(scriptIndex))
+                    {
+                        continue;
+                    }
+                    if(tempMarkedScriptIndices.contains(scriptIndex))
+                    {
+                        logger.log(Level.SEVERE, "CYCLIC IMPORT DETECTED WHILE IMPORTING NEW SCRIPTS!"); // TODO: throw an error here
+                    }
+                    tempMarkedScriptIndices.add(scriptIndex); // should i actually be adding to the front?
+                    
+                    // use this script's imports to check other scripts
+                    for(int k = 0; k < newScriptDependencies.get(scriptIndex).importedClasses.size(); k++)
+                    {
+                        // oh wait yeah no this isn't gonna work without an actual recursive function call here
+                        nextScriptIndicesToVisit.add(newFileDotPaths.indexOf(newScriptDependencies.get(scriptIndex).importedClasses.get(k)));
+                    }
+                    //tempMarkedScriptIndices.remove(tempMarkedScriptIndices.indexOf(scriptIndex)); we check for perm marks first
+                    // though yeah for memory reasons we maybe probably should remove items from there?
+                    
+                }
+                // INSIDE OF THE TRY BLOCK AT THE END
+                importCount++;
+            }
+            
+            
+            if (!newScriptContents.isEmpty()) {
+                // the next 3 functions are called because TagTreeContextMenu.addAs3ClassActionPerformed() does it.
+                ((Tag) NewScriptABCContainer).setModified(true);
+                swf.clearAllCache();
+                swf.setModified(true);
             }
         }
             
@@ -352,7 +355,6 @@ public class AS3ScriptImporter {
         return allFiles;
     }
     
-    // TO BE REMOVED:
     private void addNewClassBeingImported(String scriptDotPath, ABCContainerTag doAbc, SWF swf)
     {
         String pkg = scriptDotPath.contains(".") ? scriptDotPath.substring(0, scriptDotPath.lastIndexOf(".")) : "";
