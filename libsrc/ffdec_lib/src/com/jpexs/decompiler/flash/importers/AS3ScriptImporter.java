@@ -42,7 +42,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.HashMap;
 
 /**
  * ActionScript 3 scripts importer.
@@ -96,10 +95,9 @@ public class AS3ScriptImporter {
         
         if(NewScriptABCContainer != null){
             ArrayList<File> allFiles = recursivelySearchDirForScripts(scriptsFolder);
-            ArrayList<String> newScriptContents = new ArrayList<>();
-            ArrayList<ActionScript3Parser.importsAndCustomNamespaces> newScriptDependencies = new ArrayList<>();
+            ArrayList<String> newScriptContents = new ArrayList<String>();
+            ArrayList<ActionScript3Parser.importsAndCustomNamespaces> newScriptDependencies = new ArrayList<ActionScript3Parser.importsAndCustomNamespaces>();
             ArrayList<String> newFileDotPaths = new ArrayList<>();
-            HashMap<String, Integer> customDefinedNamespacesToScriptIndices = new HashMap<>(); // <custom defined NS name, script index>
 
             for(int i = 0; i < allFiles.size(); i++)
             {
@@ -128,14 +126,10 @@ public class AS3ScriptImporter {
                         ActionScript3Parser parser = new ActionScript3Parser(swf.getAbcIndex()); // TODO: this should probably support more than just actionscript 3.
                         ActionScript3Parser.importsAndCustomNamespaces importedClassesAndCustomNamespaces = parser.parseAndReturnScriptImports(newScriptContents.get(indexForNewScript), fileRelativePath, NewScriptABCContainer.getABC());
                         newScriptDependencies.add(importedClassesAndCustomNamespaces);
-                        for(int j = 0; j < importedClassesAndCustomNamespaces.definedCustomNamespaces.size(); j++)
-                        {
-                            customDefinedNamespacesToScriptIndices.put(importedClassesAndCustomNamespaces.definedCustomNamespaces.get(j), indexForNewScript);
-                        }
-                        // debugging start
                         List<DottedChain> scriptImportList = importedClassesAndCustomNamespaces.importedClasses;
                         List<DottedChain> usedCustomNamespaces = importedClassesAndCustomNamespaces.usedCustomNamespaces;
                         List<String> definedCustomNamespaces = importedClassesAndCustomNamespaces.definedCustomNamespaces;
+                        // debugging start
                         String importsOutputString = "";
                         String usedNamespacesOutputString = "";
                         String definedNamespacesOutputString = "";
@@ -288,31 +282,9 @@ public class AS3ScriptImporter {
         return importCount;
     }
     
-    private void recursivelyVisitScriptForDepthFirstSearch(int scriptIndex, ArrayList<Integer> tempMarkedScriptIndices, ArrayList<Integer> orderedScriptIndices, ArrayList<String> newFileDotPaths, ArrayList<ActionScript3Parser.importsAndCustomNamespaces> newScriptDependencies, HashMap<String, Integer> customDefinedNamespacesToScriptIndices, SWF swf)
+    private void recursivelyVisitScriptsForDepthFirstSearch(int visitingScriptIndex, ArrayList<Integer> tempMarkedScriptIndices, ArrayList<Integer> permMarkedScriptIndices, ArrayList<Integer> orderedScriptIndices)
     {
-        if(orderedScriptIndices.contains(scriptIndex))
-        {
-            return;
-        }
-        if(tempMarkedScriptIndices.contains(scriptIndex))
-        {
-            logger.log(Level.SEVERE, "CYCLIC IMPORT DETECTED WHILE IMPORTING NEW SCRIPTS!");
-            // THROW AN ERROR
-        }
-        ActionScript3Parser.importsAndCustomNamespaces currentScriptDependencies = newScriptDependencies.get(scriptIndex);
-        for(int k = 0; k < newScriptDependencies.get(scriptIndex).importedClasses.size(); k++)
-        {
-            recursivelyVisitScriptForDepthFirstSearch(newFileDotPaths.indexOf(currentScriptDependencies.importedClasses.get(k)), tempMarkedScriptIndices, orderedScriptIndices, newFileDotPaths, newScriptDependencies, customDefinedNamespacesToScriptIndices, swf);
-        }
-        for(int k = 0; k < currentScriptDependencies.usedCustomNamespaces.size(); k++)
-        {
-            String currentNamespaceToCheck = currentScriptDependencies.usedCustomNamespaces.get(k).toPrintableString(new LinkedHashSet<>(), swf, true);
-            if(customDefinedNamespacesToScriptIndices.containsKey(currentNamespaceToCheck))
-            {
-                recursivelyVisitScriptForDepthFirstSearch(customDefinedNamespacesToScriptIndices.get(currentNamespaceToCheck), tempMarkedScriptIndices, orderedScriptIndices, newFileDotPaths, newScriptDependencies, customDefinedNamespacesToScriptIndices, swf);
-            }
-        }
-        orderedScriptIndices.add(0, scriptIndex);
+        
     }
     
     private ArrayList<File> recursivelySearchDirForScripts(String scriptsFolder)
