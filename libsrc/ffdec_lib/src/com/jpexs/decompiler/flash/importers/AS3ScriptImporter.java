@@ -152,7 +152,7 @@ public class AS3ScriptImporter {
                         logger.log(Level.SEVERE, "Error while trying to parse imports of new scripts: " + e.getMessage());
                     }
                     // this is a script that doesn't already exist in the swf. We need to handle it differently.                    
-                    //addNewClassBeingImported(fileRelativePath, curFile, NewScriptABCContainer, swf);
+                    addNewClassBeingImported(fileRelativePath, curFile, NewScriptABCContainer, swf);
                     //newFileDotPaths.add(fileRelativePath);
                 }
             }
