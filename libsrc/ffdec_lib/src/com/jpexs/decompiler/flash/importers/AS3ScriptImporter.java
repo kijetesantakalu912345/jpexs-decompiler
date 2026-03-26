@@ -94,7 +94,8 @@ public class AS3ScriptImporter {
         SWF swf = (openable instanceof SWF) ? (SWF) openable : ((ABC) openable).getSwf();
         
         if(NewScriptABCContainer != null){
-            ArrayList<File> allFiles = recursivelySearchDirForScripts(scriptsFolder);
+            // TODO: probably sort allFiles alphabetically so that scripts compilng in the wrong order is deterministic.
+            ArrayList<File> allFiles = recursivelySearchDirForScripts(scriptsFolder); 
             ArrayList<String> newScriptContents = new ArrayList<String>();
             ArrayList<ActionScript3Parser.importsAndCustomNamespaces> newScriptDependencies = new ArrayList<ActionScript3Parser.importsAndCustomNamespaces>();
             //ArrayList<String> newFileDotPaths = new ArrayList<>();
@@ -176,6 +177,9 @@ public class AS3ScriptImporter {
                 ((Tag) NewScriptABCContainer).setModified(true);
                 swf.clearAllCache();
                 swf.setModified(true);
+                // new scripts will have their real contents compiled with the normal import loop.
+                // we create all of the scripts blank first to avoid (some) issues with scripts being compiled before their dependencies exist. 
+                packs = swf.getAS3Packs();
             }
         }
             
