@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -123,7 +123,7 @@ public class GraphPrecontinueDetector {
                             } else {
                                 other = prev.next.get(0);
                             }
-                            if (other.graphPart == el.loopBreak) {
+                            if (other.graphPart == el.loopBreak && el.loopBreak != null) {
                                 node = prev;
                                 usePreNode = true;
                             }
@@ -139,7 +139,7 @@ public class GraphPrecontinueDetector {
                         } else {
                             other = node.next.get(0);
                         }
-                        if (other.graphPart != el.loopBreak) {
+                        if (other.graphPart != el.loopBreak && el.loopBreak != null) {
                             hasMoreNexts = true;
                         }
                     } else {

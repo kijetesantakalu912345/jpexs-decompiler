@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -208,6 +208,13 @@ public class FontExporter {
             float value = Math.round(descent / divider);
             value = Math.min(value, 1024);
             f.setDescender(value);
+        }
+        
+        if (ft.isBold()) {
+            f.setBold(true);
+        }
+        if (ft.isItalic()) {
+            f.setItalic(true);
         }
 
         List<Integer> reallyExportedGlyphs = new ArrayList<>();

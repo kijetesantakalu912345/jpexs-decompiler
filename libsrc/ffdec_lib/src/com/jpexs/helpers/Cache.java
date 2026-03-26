@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -266,7 +266,7 @@ public class Cache<K, V> implements Freed {
 
     @Override
     public boolean isFreeing() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return false;
     }
 
     @Override

@@ -329,7 +329,13 @@ Pre-options:
         morphshape:png_start_end - PNG start-end format for MorphShapes
         morphshape:bmp_start_end - BMP start-end format for MorphShapes
         morphshape:webp_start_end - WEBP start-end format for MorphShapes
+        morphshape:png_frames - PNG frames format for MorphShapes
+        morphshape:bmp_frames - BMP frames format for MorphShapes
+        morphshape:webp_frames - WEBP frames format for MorphShapes
+        morphshape:webp - WEBP format for MorphShapes
+        morphshape:apng - APNG format for MorphShapes
         frame:png - PNG format for Frames
+        frame:apng - APNG format for Frames
         frame:gif - GIF format for Frames
         frame:avi - AVI format for Frames
         frame:svg - SVG format for Frames
@@ -337,7 +343,9 @@ Pre-options:
         frame:pdf - PDF format for Frames
         frame:bmp - BMP format for Frames
         frame:webp - WEBP format for Frames
+        frame:webp_animated - WEBP animated format for Frames
         sprite:png - PNG format for Sprites
+        sprite:apng - APNG format for Sprites
         sprite:gif - GIF format for Sprites
         sprite:avi - AVI format for Sprites
         sprite:svg - SVG format for Sprites
@@ -345,8 +353,10 @@ Pre-options:
         sprite:pdf - PDF format for Sprites
         sprite:bmp - BMP format for Sprites
         sprite:webp - WEBP format for Sprites
+        sprite:webp_animated - WEBP animated format for Sprites
         button:png - PNG format for Buttons
         button:svg - SVG format for Buttons
+        button:svg_combined - SVG combined format for Buttons
         button:bmp - BMP format for Buttons
         button:webp - WEBP format for Buttons
         image:png_gif_jpeg - PNG/GIF/JPEG format for Images
@@ -378,15 +388,30 @@ Pre-options:
 -select <ranges>
     Applies to: -export
     Select frames/pages for export.
+    Comma separated ranges in format <min>-<max> (<max> is optional) or <num>.
+    If it has prefix "<characterId>:" then all following ranges apply
+    to the character with specific id.
+    Use "all" as characterId to apply for every character. 
+    Use "0" (default) as characterId to apply for main timeline.
     Example <ranges> formats:
-                      1-5
-                      2,3
-                      2-5,7,9-
-    DO NOT PUT space between comma (,) and next ramge.
+                1-5              ... exports frames 1,2,3,4,5
+                2,3              ... exports frames 2 and 3
+                2-5,7,9-         ... exports frames 2,3,4,5,7,9 and all after
+                57:5-10,12,62:5  ... exports frames 5,6,7,8,9,10,12 
+                                     of character 57 and frame 5 of character 62
+                all:12-29        ... exports frames 12 to 29 of all characters
+                12:3,4,0:1-12    ... exports frames 3 and 4 of character 12
+                                     and first 12 frames of main timeline
+    DO NOT PUT space between comma (,) and next range.
 
--selectid <ranges>
+-selectid <charRanges>
+    Applies to: -export
     Select characters for export by character id.
-    <ranges> format is same as in -select
+    Comma separated ranges in format <min>-<max> (<max> is optional) or <characterId>.
+    Example <charRanges> formats:
+                1-5          ... exports characters 1,2,3,4,5
+                2,3          ... exports characters 2 and 3
+                2-5,7,9-     ... exports characters 2,3,4,5,7,9 and all ids after
 
 -selectclass <classnames>
     Applies to: -export
@@ -397,6 +422,11 @@ Pre-options:
         com.++,net.company.MyClass  (all classes in package "com" and all 
                                     subpackages, class net.company.MyClass)
         DO NOT PUT space between comma (,) and next class.
+
+-sublength <length>
+    Applies to: -export
+    Export subsprite animation of length <length>.
+    <length> is measured in number of subframes. Must be >= 1.
 
 -exportembed
     Applies to: -export
@@ -479,4 +509,12 @@ Pre-options:
     Applies to: -export
     Replaces <source> URL in importAssets tag with <target>
     for purposes of export. Can be used multiple times.
+
+-morphDuration <duration>
+    Applies to: -export
+    Specifies duration in seconds (float value) for morphshape exporting.
+
+-morphNumFrames <numberOfFrames>
+    Applies to: -export
+    Specifies number of frames for morphshape exporting.
 

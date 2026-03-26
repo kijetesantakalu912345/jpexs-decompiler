@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -85,11 +85,9 @@ public class DirectEditingTest extends FileTestBase {
                             dotest = true;
                         }
                         if (!dotest) {
-                            System.out.println("Skipped:" + classPathString);
                             continue;
                         }
-
-                        System.out.println("Recompiling:" + classPathString + "...");
+                        
                         try {
                             en.toSource(swf.getAbcIndex(), htw, abc.script_info.get(s).traits.traits, new ConvertData(), ScriptExportMode.AS, false, false, false);
                             htw.finishHilights();

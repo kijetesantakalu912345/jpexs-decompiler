@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -712,11 +712,9 @@ public class ActionScript2ClassDetector {
                                                         }
                                                         if (pos >= 0 && func.actions.get(pos) instanceof ReturnActionItem) {
                                                             GraphTargetItem val = func.actions.get(pos);
-                                                            if (val.value instanceof CallMethodActionItem) {
-                                                                if (((CallMethodActionItem) val.value).methodName instanceof DirectValueActionItem) {
-                                                                    if (((CallMethodActionItem) val.value).methodName.toString().startsWith("__get__")) {
-                                                                        func.actions.remove(pos);
-                                                                    }
+                                                            if (val.value instanceof GetMemberActionItem) {
+                                                                if (((GetMemberActionItem) val.value).isGetter) {
+                                                                    func.actions.remove(pos);
                                                                 }
                                                             }
                                                         }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -218,7 +218,7 @@ public class AS3ScriptImporter {
                 continue;
             }
             try {
-                File file = pack.getExportFile(scriptsFolder, new ScriptExportSettings(ScriptExportMode.AS, false, false, false, false, true));
+                File file = pack.getExportFile(scriptsFolder, new ScriptExportSettings(ScriptExportMode.AS, false, false, false, false));
                 if (file.exists()) {
                     openable = pack.getOpenable();
                     swf = (openable instanceof SWF) ? (SWF) openable : ((ABC) openable).getSwf();

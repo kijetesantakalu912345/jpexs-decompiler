@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -65,7 +65,7 @@ public class Loop implements Serializable {
     /**
      * Unique id of the loop
      */
-    public final long id;
+    public long id;
 
     /**
      * Mark for leads to method
@@ -92,6 +92,26 @@ public class Loop implements Serializable {
      * Stop parts before entering the loop
      */
     public List<GraphPart> stopParts = new ArrayList<>();
+    
+    /**
+     * Loop body
+     */
+    public Set<GraphPart> loopBody = new LinkedHashSet<>();
+    
+    /**
+     * Edges outside
+     */
+    public Set<GraphPartEdge> edgesOutside = new LinkedHashSet<>();
+    
+    /**
+     * Order part
+     */
+    public GraphPart orderPart;
+    
+    /**
+     * Parent loop
+     */
+    public Loop parentLoop;
 
     /**
      * Constructs a loop
@@ -119,7 +139,7 @@ public class Loop implements Serializable {
         }
         Set<String> bcAsStr = new LinkedHashSet<>();
         for (int i = 0; i < breakCandidates.size(); i++) {
-            bcAsStr.add(breakCandidates.get(i) + " - level " + breakCandidatesLevels.get(i) + " - numblocks " + breakCandidates.get(i).numBlocks);
+            bcAsStr.add(breakCandidates.get(i) + " - level " + breakCandidatesLevels.get(i));
         }
 
         return "loop(id:" + id + (loopPreContinue != null ? ",precontinue:" + loopPreContinue : "") + ",continue:" + loopContinue + ", break:" + loopBreak + ", phase:" + phase + ", backedges: " + String.join(",", edgesAsStr) + ", breakCandidates: " + String.join(",", bcAsStr) + ")";

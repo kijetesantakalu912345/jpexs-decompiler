@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -70,7 +70,7 @@ public class BEVELFILTER extends FILTER {
     /**
      * Strength of the drop shadow
      */
-    @SWFType(BasicType.FIXED8)
+    @SWFType(BasicType.UFIXED8)
     public float strength = 1f;
 
     /**
@@ -135,124 +135,7 @@ public class BEVELFILTER extends FILTER {
         } else if (!innerShadow) {
             type = Filtering.OUTER;
         }
-
-        String shadowInner = null;
-        String hilightInner = null;
-        if (type != Filtering.OUTER) {
-            String hilight = dropShadowSvg(distance, angle, highlightColor, true, true, true, 0, 0, strength, passes, document, filtersElement, exporter, in);
-            String shadow = dropShadowSvg(distance, angle + Math.PI, shadowColor, true, true, true, 0, 0, strength, passes, document, filtersElement, exporter, in);
-
-            Element feComposite1 = document.createElement("feComposite");
-            feComposite1.setAttribute("in", hilight);
-            feComposite1.setAttribute("in2", shadow);
-            feComposite1.setAttribute("operator", "out");
-            hilightInner = exporter.getUniqueId("filterResult");
-            feComposite1.setAttribute("result", hilightInner);
-            filtersElement.appendChild(feComposite1);
-
-            Element feComposite2 = document.createElement("feComposite");
-            feComposite2.setAttribute("in", shadow);
-            feComposite2.setAttribute("in2", hilight);
-            feComposite2.setAttribute("operator", "out");
-            shadowInner = exporter.getUniqueId("filterResult");
-            feComposite2.setAttribute("result", shadowInner);
-            filtersElement.appendChild(feComposite2);
-        }
-
-        String shadowOuter = null;
-        String hilightOuter = null;
-
-        if (type != Filtering.INNER) {
-            String hilight = dropShadowSvg(distance, angle + Math.PI, highlightColor, false, true, true, 0, 0, strength, passes, document, filtersElement, exporter, in);
-            String shadow = dropShadowSvg(distance, angle, shadowColor, false, true, true, 0, 0, strength, passes, document, filtersElement, exporter, in);
-
-            Element feComposite1 = document.createElement("feComposite");
-            feComposite1.setAttribute("in", hilight);
-            feComposite1.setAttribute("in2", shadow);
-            feComposite1.setAttribute("operator", "out");
-            shadowOuter = exporter.getUniqueId("filterResult");
-            feComposite1.setAttribute("result", shadowOuter);
-            filtersElement.appendChild(feComposite1);
-
-            Element feComposite2 = document.createElement("feComposite");
-            feComposite2.setAttribute("in", shadow);
-            feComposite2.setAttribute("in2", hilight);
-            feComposite2.setAttribute("operator", "out");
-            hilightOuter = exporter.getUniqueId("filterResult");
-            feComposite2.setAttribute("result", hilightOuter);
-            filtersElement.appendChild(feComposite2);
-        }
-
-        String hilight = null;
-        String shadow = null;
-
-        switch (type) {
-            case Filtering.OUTER:
-                hilight = hilightOuter;
-                shadow = shadowOuter;
-                break;
-            case Filtering.INNER:
-                hilight = hilightInner;
-                shadow = shadowInner;
-                break;
-            case Filtering.FULL:
-                Element feComposite1 = document.createElement("feComposite");
-                feComposite1.setAttribute("in", hilightInner);
-                feComposite1.setAttribute("in2", hilightOuter);
-                feComposite1.setAttribute("operator", "over");
-                hilight = exporter.getUniqueId("filterResult");
-                feComposite1.setAttribute("result", hilight);
-                filtersElement.appendChild(feComposite1);
-
-                Element feComposite2 = document.createElement("feComposite");
-                feComposite2.setAttribute("in", shadowInner);
-                feComposite2.setAttribute("in2", shadowOuter);
-                feComposite2.setAttribute("operator", "over");
-                shadow = exporter.getUniqueId("filterResult");
-                feComposite2.setAttribute("result", shadow);
-                filtersElement.appendChild(feComposite2);
-                break;
-        }
-
-        Element feComposite3 = document.createElement("feComposite");
-        feComposite3.setAttribute("in", shadow);
-        feComposite3.setAttribute("in2", hilight);
-        feComposite3.setAttribute("operator", "over");
-        String result = exporter.getUniqueId("filterResult");
-        feComposite3.setAttribute("result", result);
-        filtersElement.appendChild(feComposite3);
-
-        result = blurSvg(blurX, blurY, passes, document, filtersElement, exporter, result);
-
-        if (type == Filtering.INNER) {
-            Element feComposite4 = document.createElement("feComposite");
-            feComposite4.setAttribute("in", result);
-            feComposite4.setAttribute("in2", in);
-            feComposite4.setAttribute("operator", "in");
-            result = exporter.getUniqueId("filterResult");
-            feComposite4.setAttribute("result", result);
-            filtersElement.appendChild(feComposite4);
-        }
-        if (type == Filtering.OUTER) {
-            Element feComposite4 = document.createElement("feComposite");
-            feComposite4.setAttribute("in", result);
-            feComposite4.setAttribute("in2", in);
-            feComposite4.setAttribute("operator", "out");
-            result = exporter.getUniqueId("filterResult");
-            feComposite4.setAttribute("result", result);
-            filtersElement.appendChild(feComposite4);
-        }
-
-        if (!knockout) {
-            Element feComposite4 = document.createElement("feComposite");
-            feComposite4.setAttribute("in", result);
-            feComposite4.setAttribute("in2", in);
-            feComposite4.setAttribute("operator", "over");
-            result = exporter.getUniqueId("filterResult");
-            feComposite4.setAttribute("result", result);
-            filtersElement.appendChild(feComposite4);
-        }
-        return result;
+        return SvgFiltering.bevel(distance, angle, highlightColor, shadowColor, knockout, compositeSource, type, blurX, blurY, strength, passes, document, filtersElement, exporter, in);
     }
 
     @Override

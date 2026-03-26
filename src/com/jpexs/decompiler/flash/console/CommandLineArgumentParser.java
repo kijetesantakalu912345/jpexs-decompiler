@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS
+ *  Copyright (C) 2010-2026 JPEXS
  * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,7 +27,6 @@ import com.jpexs.decompiler.flash.SWF;
 import com.jpexs.decompiler.flash.SWFCompression;
 import com.jpexs.decompiler.flash.SearchMode;
 import com.jpexs.decompiler.flash.SwfOpenException;
-import com.jpexs.decompiler.flash.UrlResolver;
 import com.jpexs.decompiler.flash.ValueTooLargeException;
 import com.jpexs.decompiler.flash.abc.ABC;
 import com.jpexs.decompiler.flash.abc.ABCInputStream;
@@ -65,6 +64,7 @@ import com.jpexs.decompiler.flash.exporters.FrameExporter;
 import com.jpexs.decompiler.flash.exporters.ImageExporter;
 import com.jpexs.decompiler.flash.exporters.MorphShapeExporter;
 import com.jpexs.decompiler.flash.exporters.MovieExporter;
+import com.jpexs.decompiler.flash.exporters.PreviewExporter;
 import com.jpexs.decompiler.flash.exporters.ShapeExporter;
 import com.jpexs.decompiler.flash.exporters.SoundExporter;
 import com.jpexs.decompiler.flash.exporters.SymbolClassExporter;
@@ -169,6 +169,7 @@ import com.jpexs.decompiler.flash.tags.base.SoundTag;
 import com.jpexs.decompiler.flash.tags.base.TextImportErrorHandler;
 import com.jpexs.decompiler.flash.tags.base.TextTag;
 import com.jpexs.decompiler.flash.tags.base.UnsupportedSamplingRateException;
+import com.jpexs.decompiler.flash.tags.enums.ImageFormat;
 import com.jpexs.decompiler.flash.timeline.Timeline;
 import com.jpexs.decompiler.flash.timeline.Timelined;
 import com.jpexs.decompiler.flash.treeitems.OpenableList;
@@ -502,21 +503,23 @@ public class CommandLineArgumentParser {
         }
 
         AbortRetryIgnoreHandler handler = null;
-        UrlResolver urlResolver = new ConsoleUrlResolver(false, false, false, new HashMap<>());
+        ConsoleUrlResolver urlResolver = new ConsoleUrlResolver(false, false, false, new HashMap<>());
         Map<String, String> format = new HashMap<>();
         Map<String, String> changedImports = new LinkedHashMap<>();
         double zoom = 1;
+        Double morphDuration = PreviewExporter.MORPH_SHAPE_DEFAULT_DURATION;
+        int morphNumFrames = 10;
         String charset = Charset.defaultCharset().name();
         boolean cliMode = false;
         boolean air = false;
         boolean exportEmbed = false;
-        boolean resampleWav = false;
         boolean transparentBackground = false;
         Selection selection = new Selection();
         Selection selectionIds = new Selection();
         List<String> selectionClasses = null;
         String nextParam = null;
         String nextParamOriginal = null;
+        int subLength = 1;
         OUTER:
         while (true) {
             nextParamOriginal = args.pop();
@@ -534,25 +537,31 @@ public class CommandLineArgumentParser {
                     cliMode = true;
                     break;
                 case "-selectid":
-                    selectionIds = parseSelect(args);
+                    selectionIds = parseSelect(args, false, "selectid");
                     break;
                 case "-select":
-                    selection = parseSelect(args);
+                    selection = parseSelect(args, true, "select");
                     break;
                 case "-selectclass":
                     selectionClasses = parseSelectClass(args);
                     break;
+                case "-sublength":
+                    subLength = parseSubLength(args);
+                    break;
                 case "-exportembed":
                     exportEmbed = true;
-                    break;
-                case "-resamplewav":
-                    resampleWav = true;
                     break;
                 case "-ignorebackground":
                     transparentBackground = true;
                     break;
                 case "-zoom":
                     zoom = parseZoom(args);
+                    break;
+                case "-morphduration":
+                    morphDuration = parseMorphDuration(args);
+                    break;
+                case "-morphnumframes":
+                    morphNumFrames = parseMorphNumFrames(args);
                     break;
                 case "-format":
                     format = parseFormat(args);
@@ -677,7 +686,7 @@ public class CommandLineArgumentParser {
         } else if (command.equals("proxy")) {
             parseProxy(args);
         } else if (command.equals("export")) {
-            parseExport(selectionClasses, selection, selectionIds, args, handler, traceLevel, format, zoom, charset, exportEmbed, resampleWav, transparentBackground, urlResolver);
+            parseExport(selectionClasses, selection, selectionIds, args, handler, traceLevel, format, zoom, charset, exportEmbed, transparentBackground, urlResolver, subLength, morphDuration, morphNumFrames);
             System.exit(0);
         } else if (command.equals("compress")) {
             parseCompress(args);
@@ -868,7 +877,7 @@ public class CommandLineArgumentParser {
         for (String c : cfgs) {
             String[] cp = c.split("=");
             if (cp.length == 1) {
-                cp = new String[]{cp[0], "1"};
+                cp = new String[]{cp[0], ""};
             }
 
             String nameLowerCase = cp[0].toLowerCase(Locale.ENGLISH);
@@ -878,7 +887,7 @@ public class CommandLineArgumentParser {
             Class<?> type = ConfigurationItem.getConfigurationFieldType(field);
 
             if (type == String.class) {
-                System.out.println("Config " + item.getName() + " set to " + stringValue);
+                System.out.println("Config " + item.getName() + " set to \"" + Helper.escapeString(stringValue) + "\"");
                 ((ConfigurationItem<String>) item).set(stringValue);
             } else if (type == Calendar.class) {
                 SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
@@ -894,7 +903,7 @@ public class CommandLineArgumentParser {
             } else if (type == Integer.class) {
                 int intValue = Integer.parseInt(stringValue);
                 ((ConfigurationItem<Integer>) item).set(intValue);
-            } else if ((type == Integer.class) || (type == Long.class)) {
+            } else if (type == Long.class) {
                 long longValue = Long.parseLong(stringValue);
                 ((ConfigurationItem<Long>) item).set(longValue);
             } else if (type == Double.class) {
@@ -904,6 +913,9 @@ public class CommandLineArgumentParser {
                 float floatValue = Float.parseFloat(stringValue);
                 ((ConfigurationItem<Float>) item).set(floatValue);
             } else if (type == Boolean.class) {
+                if (stringValue.isEmpty()) {
+                    stringValue = "1";
+                }
                 Boolean boolValue = parseBooleanConfigValue(stringValue);
                 if (boolValue != null) {
                     System.out.println("Config " + item.getName() + " set to " + boolValue);
@@ -1584,16 +1596,29 @@ public class CommandLineArgumentParser {
 
     private static class Range {
 
+        public Integer prefix;
+
         public Integer min;
 
         public Integer max;
 
-        public Range(Integer min, Integer max) {
+        public Range(Integer prefix, Integer min, Integer max) {
+            this.prefix = prefix;
             this.min = min;
             this.max = max;
         }
 
         public boolean contains(int index) {
+            return contains(0, index);
+        }
+
+        public boolean contains(int prefix, int index) {
+            if (this.prefix == null && prefix == 0) {
+                return false;
+            }
+            if (this.prefix != null && this.prefix != prefix) {
+                return false;
+            }
             int minimum = min == null ? Integer.MIN_VALUE : min;
             int maximum = max == null ? Integer.MAX_VALUE : max;
 
@@ -1607,7 +1632,7 @@ public class CommandLineArgumentParser {
 
         public Selection() {
             this.ranges = new ArrayList<>();
-            this.ranges.add(new Range(null, null));
+            this.ranges.add(new Range(0, null, null));
         }
 
         public Selection(List<Range> ranges) {
@@ -1615,36 +1640,76 @@ public class CommandLineArgumentParser {
         }
 
         public boolean contains(int index) {
+            return contains(0, index);
+        }
+
+        public boolean contains(int prefix, int index) {
+            boolean prefixFound = false;
             for (Range r : ranges) {
-                if (r.contains(index)) {
+                if (r.prefix == prefix || (prefix != 0 && r.prefix == null)) {
+                    prefixFound = true;
+                }
+                if (r.contains(prefix, index)) {
                     return true;
                 }
+            }
+            if (!prefixFound) {
+                return true;
             }
             return false;
         }
     }
 
-    private static Selection parseSelect(Stack<String> args) {
+    private static Selection parseSelect(Stack<String> args, boolean allowPrefix, String command) {
         List<Range> ret = new ArrayList<>();
         if (args.isEmpty()) {
             System.err.println("range parameter expected");
-            badArguments("select");
+            badArguments(command);
         }
         String range = args.pop();
         String[] ranges;
         if (range.contains(",")) {
-            ranges = range.split(",");
+            ranges = range.split(",", -1);
         } else {
             ranges = new String[]{range};
         }
+
+        Integer prefix = 0;
+
         for (String r : ranges) {
             Integer min = null;
             Integer max = null;
-            if (r.contains("-")) {
-                String[] ps = r.split("\\-");
+            if (r.contains(":")) {
+                if (!allowPrefix) {
+                    System.err.println("invalid range");
+                    badArguments(command);
+                }
+                String[] ps = r.split(":", -1);
                 if (ps.length != 2) {
                     System.err.println("invalid range");
-                    badArguments("select");
+                    badArguments(command);
+                }
+                if ("all".equals(ps[0])) {
+                    prefix = null;
+                } else {
+                    try {
+                        prefix = Integer.parseInt(ps[0]);
+                    } catch (NumberFormatException nfe) {
+                        System.err.println("invalid range");
+                        badArguments(command);
+                    }
+                    if (prefix < 0) {
+                        System.err.println("invalid range");
+                        badArguments(command);
+                    }
+                }
+                r = ps[1];
+            }
+            if (r.contains("-")) {
+                String[] ps = r.split("\\-", -1);
+                if (ps.length != 2) {
+                    System.err.println("invalid range");
+                    badArguments(command);
                 }
                 try {
                     if (!"".equals(ps[0])) {
@@ -1655,7 +1720,7 @@ public class CommandLineArgumentParser {
                     }
                 } catch (NumberFormatException nfe) {
                     System.err.println("invalid range");
-                    badArguments("select");
+                    badArguments(command);
                 }
             } else {
                 try {
@@ -1663,12 +1728,32 @@ public class CommandLineArgumentParser {
                     max = min;
                 } catch (NumberFormatException nfe) {
                     System.err.println("invalid range");
-                    badArguments("select");
+                    badArguments(command);
                 }
             }
-            ret.add(new Range(min, max));
+            ret.add(new Range(prefix, min, max));
         }
         return new Selection(ret);
+    }
+
+    private static int parseSubLength(Stack<String> args) {
+        if (args.isEmpty()) {
+            System.err.println("sub length parameter expected");
+            badArguments("sublength");
+        }
+        try {
+            int subLen = Integer.parseInt(args.pop());
+            if (subLen < 1) {
+                System.err.println("Minimum for sub length is 1");
+                badArguments("sublength");
+                subLen = 1;
+            }
+            return subLen;
+        } catch (NumberFormatException nfe) {
+            System.err.println("Invalid sub length");
+            badArguments("sublength");
+        }
+        return 1;
     }
 
     private static double parseZoom(Stack<String> args) {
@@ -1683,6 +1768,42 @@ public class CommandLineArgumentParser {
             badArguments("zoom");
         }
         return 1;
+    }
+
+    private static double parseMorphDuration(Stack<String> args) {
+        if (args.isEmpty()) {
+            System.err.println("duration parameter expected");
+            badArguments("morphduration");
+        }
+        try {
+            double val = Double.parseDouble(args.pop());
+            if (val <= 0) {
+                throw new NumberFormatException();
+            }
+            return val;
+        } catch (NumberFormatException nfe) {
+            System.err.println("invalid duration");
+            badArguments("morphduration");
+        }
+        return 2;
+    }
+
+    private static int parseMorphNumFrames(Stack<String> args) {
+        if (args.isEmpty()) {
+            System.err.println("number of frames parameter expected");
+            badArguments("morphnumframes");
+        }
+        try {
+            int val = Integer.parseInt(args.pop());
+            if (val < 2) {
+                throw new NumberFormatException();
+            }
+            return val;
+        } catch (NumberFormatException nfe) {
+            System.err.println("invalid number of frames");
+            badArguments("morphnumframes");
+        }
+        return 50;
     }
 
     private static AbortRetryIgnoreHandler parseOnError(Stack<String> args) {
@@ -1806,7 +1927,7 @@ public class CommandLineArgumentParser {
         changedImports.put(args.pop(), args.pop());
     }
 
-    private static UrlResolver parseImportAssets(Stack<String> args, Map<String, String> changedImports) {
+    private static ConsoleUrlResolver parseImportAssets(Stack<String> args, Map<String, String> changedImports) {
         if (args.isEmpty()) {
             System.err.println("importassets options expected");
             badArguments("importassets");
@@ -2033,7 +2154,23 @@ public class CommandLineArgumentParser {
 
     }
 
-    private static void parseExport(List<String> selectionClasses, Selection selection, Selection selectionIds, Stack<String> args, AbortRetryIgnoreHandler handler, Level traceLevel, Map<String, String> formats, double zoom, String charset, boolean exportEmbed, boolean resampleWav, boolean transparentBackground, UrlResolver urlResolver) {
+    private static void parseExport(
+            List<String> selectionClasses,
+            Selection selection,
+            Selection selectionIds,
+            Stack<String> args,
+            AbortRetryIgnoreHandler handler,
+            Level traceLevel,
+            Map<String, String> formats,
+            double zoom,
+            String charset,
+            boolean exportEmbed,
+            boolean transparentBackground,
+            ConsoleUrlResolver urlResolver,
+            int subFrameLength,
+            double morphDuration,
+            int morphNumFrames
+    ) {
         if (args.size() < 3) {
             badArguments("export");
         }
@@ -2105,6 +2242,9 @@ public class CommandLineArgumentParser {
             }
 
             for (File inFile : inFiles) {
+
+                urlResolver.clearIgnored();
+
                 String inFileName = Path.getFileNameWithoutExtension(inFile);
                 if (stdOut != null) {
                     String outFilePath = stdOut.replace("{swfFile}", inFileName);
@@ -2192,6 +2332,8 @@ public class CommandLineArgumentParser {
                     }
                 }
 
+                int aaScale = Configuration.reduceAntialiasConflationByScalingForExport.get() ? Configuration.reduceAntialiasConflationByScalingValueForExport.get() : 1;
+
                 // Here the exportFormats array should contain only validitems
                 commandLineMode = true;
                 boolean exportAll = exportFormats.contains("all");
@@ -2205,12 +2347,12 @@ public class CommandLineArgumentParser {
 
                 if (exportAll || exportFormats.contains("shape")) {
                     System.out.println("Exporting shapes...");
-                    new ShapeExporter().exportShapes(handler, outDir + (multipleExportTypes ? File.separator + ShapeExportSettings.EXPORT_FOLDER_NAME : ""), swf, new ReadOnlyTagList(extags), new ShapeExportSettings(enumFromStr(formats.get("shape"), ShapeExportMode.class), zoom), evl, zoom);
+                    new ShapeExporter().exportShapes(handler, outDir + (multipleExportTypes ? File.separator + ShapeExportSettings.EXPORT_FOLDER_NAME : ""), swf, new ReadOnlyTagList(extags), new ShapeExportSettings(enumFromStr(formats.get("shape"), ShapeExportMode.class), zoom), evl, zoom, aaScale);
                 }
 
                 if (exportAll || exportFormats.contains("morphshape")) {
                     System.out.println("Exporting morphshapes...");
-                    new MorphShapeExporter().exportMorphShapes(handler, outDir + (multipleExportTypes ? File.separator + MorphShapeExportSettings.EXPORT_FOLDER_NAME : ""), new ReadOnlyTagList(extags), new MorphShapeExportSettings(enumFromStr(formats.get("morphshape"), MorphShapeExportMode.class), zoom), evl);
+                    new MorphShapeExporter().exportMorphShapes(handler, outDir + (multipleExportTypes ? File.separator + MorphShapeExportSettings.EXPORT_FOLDER_NAME : ""), new ReadOnlyTagList(extags), new MorphShapeExportSettings(enumFromStr(formats.get("morphshape"), MorphShapeExportMode.class), zoom, aaScale, morphDuration, morphNumFrames), evl);
                 }
 
                 if (exportAll || exportFormats.contains("movie")) {
@@ -2230,7 +2372,7 @@ public class CommandLineArgumentParser {
 
                 if (exportAll || exportFormats.contains("sound")) {
                     System.out.println("Exporting sounds...");
-                    new SoundExporter().exportSounds(handler, outDir + (multipleExportTypes ? File.separator + SoundExportSettings.EXPORT_FOLDER_NAME : ""), new ReadOnlyTagList(extags), new SoundExportSettings(enumFromStr(formats.get("sound"), SoundExportMode.class), resampleWav), evl);
+                    new SoundExporter().exportSounds(handler, outDir + (multipleExportTypes ? File.separator + SoundExportSettings.EXPORT_FOLDER_NAME : ""), new ReadOnlyTagList(extags), new SoundExportSettings(enumFromStr(formats.get("sound"), SoundExportMode.class)), evl);
                 }
 
                 if (exportAll || exportFormats.contains("binarydata")) {
@@ -2258,27 +2400,34 @@ public class CommandLineArgumentParser {
                     System.out.println("Exporting frames...");
                     List<Integer> frames = new ArrayList<>();
                     for (int i = 0; i < swf.frameCount; i++) {
-                        if (selection.contains(i + 1)) {
+                        if (selection.contains(0, i + 1)) {
                             frames.add(i);
                         }
                     }
-                    FrameExportSettings fes = new FrameExportSettings(enumFromStr(formats.get("frame"), FrameExportMode.class), zoom, transparentBackground);
-                    frameExporter.exportFrames(handler, outDir + (multipleExportTypes ? File.separator + FrameExportSettings.EXPORT_FOLDER_NAME : ""), swf, 0, frames, 1, fes, evl);
+                    FrameExportSettings fes = new FrameExportSettings(enumFromStr(formats.get("frame"), FrameExportMode.class), zoom, transparentBackground, aaScale);
+                    frameExporter.exportFrames(handler, outDir + (multipleExportTypes ? File.separator + FrameExportSettings.EXPORT_FOLDER_NAME : ""), swf, 0, frames, subFrameLength, fes, evl);
                 }
 
                 if (exportAll || exportFormats.contains("sprite")) {
                     System.out.println("Exporting sprite...");
-                    SpriteExportSettings ses = new SpriteExportSettings(enumFromStr(formats.get("sprite"), SpriteExportMode.class), zoom);
+                    SpriteExportSettings ses = new SpriteExportSettings(enumFromStr(formats.get("sprite"), SpriteExportMode.class), zoom, aaScale);
                     for (Tag t : extags) {
                         if (t instanceof DefineSpriteTag) {
-                            frameExporter.exportSpriteFrames(handler, outDir + (multipleExportTypes ? File.separator + SpriteExportSettings.EXPORT_FOLDER_NAME : ""), swf, ((DefineSpriteTag) t).getCharacterId(), null, 1, ses, evl);
+                            List<Integer> frames = new ArrayList<>();
+                            int spriteId = ((DefineSpriteTag) t).getCharacterId();
+                            for (int i = 0; i < ((DefineSpriteTag) t).getFrameCount(); i++) {
+                                if (selection.contains(spriteId, i + 1)) {
+                                    frames.add(i);
+                                }
+                            }
+                            frameExporter.exportSpriteFrames(handler, outDir + (multipleExportTypes ? File.separator + SpriteExportSettings.EXPORT_FOLDER_NAME : ""), swf, spriteId, frames, subFrameLength, ses, evl);
                         }
                     }
                 }
 
                 if (exportAll || exportFormats.contains("button")) {
                     System.out.println("Exporting buttons...");
-                    ButtonExportSettings bes = new ButtonExportSettings(enumFromStr(formats.get("button"), ButtonExportMode.class), zoom);
+                    ButtonExportSettings bes = new ButtonExportSettings(enumFromStr(formats.get("button"), ButtonExportMode.class), zoom, aaScale);
                     for (Tag t : extags) {
                         if (t instanceof ButtonTag) {
                             frameExporter.exportButtonFrames(handler, outDir + (multipleExportTypes ? File.separator + ButtonExportSettings.EXPORT_FOLDER_NAME : ""), swf, ((ButtonTag) t).getCharacterId(), null, bes, evl);
@@ -2297,7 +2446,7 @@ public class CommandLineArgumentParser {
                     singleScriptFile = false;
                 }
 
-                ScriptExportSettings scriptExportSettings = new ScriptExportSettings(enumFromStr(formats.get("script"), ScriptExportMode.class), singleScriptFile, false, exportEmbed, false, resampleWav);
+                ScriptExportSettings scriptExportSettings = new ScriptExportSettings(enumFromStr(formats.get("script"), ScriptExportMode.class), singleScriptFile, false, exportEmbed, false);
                 boolean exportAllScript = exportAll || exportFormats.contains("script");
                 boolean exportAs2Script = exportAllScript || exportFormats.contains("script_as2");
                 boolean exportAs3Script = exportAllScript || exportFormats.contains("script_as3");
@@ -2845,7 +2994,14 @@ public class CommandLineArgumentParser {
                 badArguments("format");
             }
             String[] parts = fmt.split(":");
-            ret.put(parts[0].toLowerCase(Locale.ENGLISH), parts[1].toLowerCase(Locale.ENGLISH));
+            String key = parts[0].toLowerCase(Locale.ENGLISH);
+            String val = parts[1].toLowerCase(Locale.ENGLISH);
+
+            if (val.contains("webp") && !ImageFormat.WEBP.available()) {
+                System.err.println("WEBP format is not available on this platform");
+                badArguments("format");
+            }
+            ret.put(key, val);
         }
         return ret;
     }
@@ -2857,6 +3013,8 @@ public class CommandLineArgumentParser {
         File inFile = new File(args.pop());
         File outFile = new File(args.pop());
         printHeader();
+
+        int aaScale = Configuration.reduceAntialiasConflationByScalingForExport.get() ? Configuration.reduceAntialiasConflationByScalingValueForExport.get() : 1;
 
         try (StdInAwareFileInputStream is = new StdInAwareFileInputStream(inFile)) {
 
@@ -2942,7 +3100,7 @@ public class CommandLineArgumentParser {
                         renderContext.stateUnderCursor = new ArrayList<>();
 
                         try {
-                            tim.toImage(fframe, fframe, renderContext, image, image, false, m, new Matrix(), m, null, zoom, true, new ExportRectangle(rect), new ExportRectangle(rect), m, true, Timeline.DRAW_MODE_ALL, 0, true, new ArrayList<>());
+                            tim.toImage(fframe, fframe, renderContext, image, image, false, m, new Matrix(), m, null, zoom, true, new ExportRectangle(rect), new ExportRectangle(rect), m, true, Timeline.DRAW_MODE_ALL, 0, true, new ArrayList<>(), aaScale);
                         } catch (Exception ex) {
                             ex.printStackTrace();
                         }
@@ -3082,7 +3240,7 @@ public class CommandLineArgumentParser {
 
                             if (".svg".equals(ext)) {
                                 String svgText = Helper.readTextFile(repFile);
-                                new SvgImporter().importSvg(shapeTag, svgText);
+                                new SvgImporter().importSvg(shapeTag, svgText, fill);
                             } else {
                                 int format = parseImageFormat(args);
                                 new ShapeImporter().importImage(shapeTag, data, format, fill);
@@ -3109,7 +3267,9 @@ public class CommandLineArgumentParser {
                             Set<Character> selChars = new HashSet<>();
                             Font font;
                             try {
-                                font = Font.createFont(Font.TRUETYPE_FONT, new File(repFile));
+                                File fontFile = new File(repFile);
+                                font = Font.createFont(Font.TRUETYPE_FONT, fontFile);
+                                FontTag.addCustomFont(font, fontFile);
                                 List<Character> required = Arrays.asList((char) 0x01, (char) 0x00, (char) 0x0D, (char) 0x20);
                                 for (char c = 0; c < Character.MAX_VALUE; c++) {
                                     if (required.contains(c)) {
@@ -3120,8 +3280,8 @@ public class CommandLineArgumentParser {
                                     }
                                     if (Utf8Helper.charToCodePoint(c, fontTag.getCodesCharset()) == -1) {
                                         continue;
-                                    }                                    
-                                    selChars.add(c);                                                                        
+                                    }
+                                    selChars.add(c);
                                 }
                             } catch (FontFormatException | IOException e) {
                                 System.err.println("replace font tag fail: " + e.getMessage());
@@ -3132,7 +3292,7 @@ public class CommandLineArgumentParser {
                             if (font.getSize() != 1024) {
                                 font = font.deriveFont(fontTag.getFontStyle(), 1024);
                             }
-                                                                
+
                             for (char c : selChars) {
                                 if (!fontTag.addCharacter(c, font)) {
                                     break;
@@ -4414,11 +4574,10 @@ public class CommandLineArgumentParser {
         if (args.isEmpty()) {
             badArguments("dumpswf");
         }
-        try {
-            Configuration.dumpTags.set(true);
-            Configuration.parallelSpeedUp.set(false);
-            OpenableSourceInfo sourceInfo = new OpenableSourceInfo(null, args.pop(), null);
-            Main.parseOpenable(sourceInfo);
+        Configuration.dumpTags.set(true);
+        Configuration.parallelSpeedUp.set(false);
+        try (InputStream is = new FileInputStream(args.pop())) {
+            SWF swf = new SWF(is, false, false);
         } catch (Exception ex) {
             logger.log(Level.SEVERE, null, ex);
             System.exit(1);

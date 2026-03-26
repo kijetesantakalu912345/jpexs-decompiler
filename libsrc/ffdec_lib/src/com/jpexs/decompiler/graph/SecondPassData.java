@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,8 +16,8 @@
  */
 package com.jpexs.decompiler.graph;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Second pass data.
@@ -27,7 +27,12 @@ import java.util.Set;
 public class SecondPassData {
 
     /**
-     * All switch parts.
+     * List of cases for each switch statement
      */
-    public Set<GraphPart> allSwitchParts = new HashSet<>();
+    public List<List<GraphPart>> switchCases = new ArrayList<>();
+    
+    /**
+     * List of breaks of each switch statement
+     */
+    public List<GraphPart> switchBreaks = new ArrayList<>();
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -28,8 +28,10 @@ import com.jpexs.decompiler.flash.timeline.Timelined;
 import com.jpexs.decompiler.flash.types.BUTTONRECORD;
 import com.jpexs.decompiler.flash.types.ColorTransform;
 import com.jpexs.decompiler.flash.types.RECT;
+import com.jpexs.decompiler.flash.types.filters.FILTER;
 import com.jpexs.helpers.ByteArrayRange;
 import com.jpexs.helpers.SerializableImage;
+import java.awt.Dimension;
 import java.awt.Shape;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -38,6 +40,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import org.w3c.dom.Element;
 
 /**
  * Base class for button tags.
@@ -99,7 +102,7 @@ public abstract class ButtonTag extends DrawableTag implements Timelined {
     public abstract boolean trackAsMenu();
 
     @Override
-    public void getNeededCharacters(Set<Integer> needed, SWF swf) {
+    public void getNeededCharacters(Set<Integer> needed, Set<String> neededClasses, SWF swf) {
         for (BUTTONRECORD r : getRecords()) {
             needed.add(r.characterId);
         }
@@ -126,13 +129,42 @@ public abstract class ButtonTag extends DrawableTag implements Timelined {
     }
 
     @Override
-    public void toImage(int frame, int time, int ratio, RenderContext renderContext, SerializableImage image, SerializableImage fullImage, boolean isClip, Matrix transformation, Matrix strokeTransformation, Matrix absoluteTransformation, Matrix fullTransformation, ColorTransform colorTransform, double unzoom, boolean sameImage, ExportRectangle viewRect, ExportRectangle viewRectRaw, boolean scaleStrokes, int drawMode, int blendMode, boolean canUseSmoothing) {
-        getTimeline().toImage(frame, time, renderContext, image, fullImage, isClip, transformation, strokeTransformation, absoluteTransformation, colorTransform, unzoom, sameImage, viewRect, viewRectRaw, fullTransformation, scaleStrokes, drawMode, blendMode, canUseSmoothing, new ArrayList<>());
+    public void toImage(int frame, int time, int ratio, RenderContext renderContext, SerializableImage image, SerializableImage fullImage, boolean isClip, Matrix transformation, Matrix strokeTransformation, Matrix absoluteTransformation, Matrix fullTransformation, ColorTransform colorTransform, double unzoom, boolean sameImage, ExportRectangle viewRect, ExportRectangle viewRectRaw, boolean scaleStrokes, int drawMode, int blendMode, boolean canUseSmoothing, int aaScale) {
+        getTimeline().toImage(frame, time, renderContext, image, fullImage, isClip, transformation, strokeTransformation, absoluteTransformation, colorTransform, unzoom, sameImage, viewRect, viewRectRaw, fullTransformation, scaleStrokes, drawMode, blendMode, canUseSmoothing, new ArrayList<>(), aaScale);
     }
 
     @Override
-    public void toSVG(SVGExporter exporter, int ratio, ColorTransform colorTransform, int level, Matrix transformation, Matrix strokeTransformation) throws IOException {
-        getTimeline().toSVG(0, 0, null, 0, exporter, colorTransform, level + 1, transformation, strokeTransformation);
+    public void toSVG(int frame, int time, SVGExporter exporter, int ratio, ColorTransform colorTransform, int level, Matrix transformation, Matrix strokeTransformation) throws IOException {
+        //getTimeline().toSVG(0, 0, null, 0, exporter, colorTransform, level + 1, transformation, strokeTransformation);
+        exporter.requireButtonStyle();                            
+                            
+        Timeline tim = getTimeline();
+        
+        Element buttonGroup = exporter.createSubGroup(new Matrix(), null);
+        buttonGroup.setAttribute("class", "button");
+
+        Element upGroup = exporter.createSubGroup(new Matrix(), null);
+        upGroup.setAttribute("class", "button-frame button-frame-up");
+        tim.toSVG(ButtonTag.FRAME_UP, 0, null, 0, exporter, colorTransform, level + 1, transformation, strokeTransformation);
+        exporter.endGroup();
+
+        Element overGroup = exporter.createSubGroup(new Matrix(), null);
+        overGroup.setAttribute("class", "button-frame button-frame-over");                            
+        tim.toSVG(ButtonTag.FRAME_OVER, 0, null, 0, exporter, colorTransform, level + 1, transformation, strokeTransformation);
+        exporter.endGroup();
+
+        Element downGroup = exporter.createSubGroup(new Matrix(), null);
+        downGroup.setAttribute("class", "button-frame button-frame-down");   
+        tim.toSVG(ButtonTag.FRAME_DOWN, 0, null, 0, exporter, colorTransform, level + 1, transformation, strokeTransformation);
+        exporter.endGroup();
+
+        Element hitTestGroup = exporter.createSubGroup(new Matrix(), null);
+        hitTestGroup.setAttribute("class", "button-frame button-frame-hittest");                               
+        tim.toSVG(ButtonTag.FRAME_HITTEST, 0, null, 0, exporter, colorTransform, level + 1, transformation, strokeTransformation);
+        exporter.endGroup();
+
+        exporter.endGroup(); //buttonGroup
+        
     }
 
     /**
@@ -173,7 +205,7 @@ public abstract class ButtonTag extends DrawableTag implements Timelined {
             return timeline;
         }
 
-        timeline = new Timeline(swf, this, getCharacterId(), getRect());
+        timeline = new Timeline(swf, this, getCharacterId(), getRect(), getFilterDimensions());
         initTimeline(timeline);
         return timeline;
     }
@@ -400,4 +432,48 @@ public abstract class ButtonTag extends DrawableTag implements Timelined {
         }
         selectedRecord.fromPlaceObject(placeTag);
     }
+    
+    @Override
+    public Dimension getFilterDimensions() {
+        int totalDeltaX = 0;
+        int totalDeltaY = 0;
+        for (BUTTONRECORD rec : getRecords()) {
+            
+            int chId = rec.characterId;
+            CharacterTag ch = null;
+            if (chId != -1) {
+                ch = swf.getCharacter(chId);
+                if (swf.getCyclicCharacters().contains(chId)) {
+                    continue;
+                }                
+            }
+            if (ch instanceof DrawableTag) {
+                Dimension filterDimension = ((DrawableTag) ch).getFilterDimensions();
+
+                totalDeltaX = Math.max(totalDeltaX, filterDimension.width);
+                totalDeltaY = Math.max(totalDeltaY, filterDimension.height);
+            }            
+            
+            double deltaXMax = 0;
+            double deltaYMax = 0;                
+            if (rec.filterList != null && !rec.filterList.isEmpty()) { 
+                // calculate size after applying the filters
+                for (FILTER filter : rec.filterList) {
+                    if (!filter.enabled) {
+                        continue;
+                    }
+                    double x = filter.getDeltaX();
+                    double y = filter.getDeltaY();
+                    deltaXMax += x;
+                    deltaYMax += y;
+                }
+                
+                totalDeltaX = Math.max(totalDeltaX, (int) (Math.ceil(deltaXMax) * SWF.unitDivisor));
+                totalDeltaY = Math.max(totalDeltaY, (int) (Math.ceil(deltaYMax) * SWF.unitDivisor));
+            }
+        }
+        return new Dimension(totalDeltaX, totalDeltaY);                
+    }
+    
+    
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -565,11 +565,66 @@ public class ActionScript2AssemblerTest extends ActionScript2TestBase {
                 + "if(b == 4)\n"
                 + "{\n"
                 + "trace(\"ret\");\n"
-                + "return;\n" //critical - no level2 break, but return
+                + "return;\n"
                 + "}\n"
                 + "b++;\n"
                 + "}\n"
                 + "}\n"
                 + "}");
     }
+
+    @Test
+    public void testMemberIncrementDup() {
+        String res = decompilePcode("Push \"this\"\n"
+                + "GetVariable\n"
+                + "PushDuplicate\n"
+                + "Push \"myVar\"\n"
+                + "GetMember\n"
+                + "Increment\n"
+                + "Push \"myVar\"\n"
+                + "StackSwap\n"
+                + "SetMember");
+        res = cleanPCode(res);
+        assertEquals(res, "this.myVar++;");
+    }
+
+    @Test
+    public void testMemberCompoundDup() {
+        String res = decompilePcode("Push \"this\"\n"
+                + "GetVariable\n"
+                + "PushDuplicate\n"
+                + "Push \"myVar\"\n"
+                + "GetMember\n"
+                + "Push 1\n"
+                + "Add2\n"
+                + "Push \"myVar\"\n"
+                + "StackSwap\n"
+                + "SetMember");
+        res = cleanPCode(res);
+        assertEquals(res, "this.myVar += 1;");
+    }
+
+    @Test
+    public void testVariableIncrementDup() {
+        String res = decompilePcode("Push \"c\"\n"
+                + "PushDuplicate\n"
+                + "GetVariable\n"
+                + "Increment\n"
+                + "SetVariable");
+        res = cleanPCode(res);
+        assertEquals(res, "c++;");
+    }
+
+    @Test
+    public void testVariableCompoundDup() {
+        String res = decompilePcode("Push \"c\"\n"
+                + "PushDuplicate\n"
+                + "GetVariable\n"
+                + "Push 1\n"
+                + "Add2\n"
+                + "SetVariable");
+        res = cleanPCode(res);
+        assertEquals(res, "c += 1;");
+    }
+
 }

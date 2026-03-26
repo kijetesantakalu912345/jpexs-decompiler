@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -134,7 +134,7 @@ public class ActionWith extends Action implements GraphSourceItemContainer {
 
     @Override
     public void translateContainer(List<List<GraphTargetItem>> content, GraphSourceItem lineStartItem, TranslateStack stack, List<GraphTargetItem> output, HashMap<Integer, String> regNames, HashMap<String, GraphTargetItem> variables, HashMap<String, GraphTargetItem> functions) {
-        output.add(new WithActionItem(this, lineStartItem, stack.pop(), content.get(0)));
+        stack.addToOutput(new WithActionItem(this, lineStartItem, stack.pop(), content.get(0)));
     }
 
     @Override

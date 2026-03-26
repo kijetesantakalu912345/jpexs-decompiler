@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -91,8 +91,10 @@ import com.jpexs.decompiler.flash.abc.avm2.model.operations.URShiftAVM2Item;
 import com.jpexs.decompiler.flash.abc.avm2.model.operations.UnPlusAVM2Item;
 import com.jpexs.decompiler.flash.abc.avm2.parser.AVM2ParseException;
 import com.jpexs.decompiler.flash.abc.types.Float4;
+import com.jpexs.decompiler.flash.abc.types.MethodBody;
 import com.jpexs.decompiler.flash.abc.types.Namespace;
 import com.jpexs.decompiler.flash.abc.types.ScriptInfo;
+import com.jpexs.decompiler.flash.abc.types.traits.TraitSlotConst;
 import com.jpexs.decompiler.flash.action.swf4.ActionIf;
 import com.jpexs.decompiler.flash.tags.ABCContainerTag;
 import com.jpexs.decompiler.flash.tags.Tag;
@@ -245,14 +247,14 @@ public class ActionScript3Parser {
             if (!isNameOrProp(ret)) {
                 throw new AVM2ParseException("Invalid assignment", lexer.yyline());
             }
-            ret = new PostIncrementAVM2Item(null, null, ret);
+            ret = new PostIncrementAVM2Item(null, null, ret, TypeItem.NUMBER); //TODO: how about TypeItem.INT?
             s = lex();
 
         } else if (s.type == SymbolType.DECREMENT) {
             if (!isNameOrProp(ret)) {
                 throw new AVM2ParseException("Invalid assignment", lexer.yyline());
             }
-            ret = new PostDecrementAVM2Item(null, null, ret);
+            ret = new PostDecrementAVM2Item(null, null, ret, TypeItem.NUMBER); //TODO: how about TypeItem.INT?
             s = lex();
         }
 
@@ -329,15 +331,22 @@ public class ActionScript3Parser {
                 s = lex();
             } else {
                 s = lex();
-                expected(s, lexer.yyline(), SymbolGroup.IDENTIFIER, SymbolType.MULTIPLY);
+                expected(s, lexer.yyline(), SymbolGroup.IDENTIFIER, SymbolType.MULTIPLY,
+                        SymbolType.PUBLIC, SymbolType.PROTECTED, SymbolType.PRIVATE, SymbolType.INTERNAL);
                 String propName = s.value.toString(); //Can be *
+                String nsKeyword = null;
+                if (s.isType(SymbolType.PUBLIC, SymbolType.PROTECTED, SymbolType.PRIVATE, SymbolType.INTERNAL)) {
+                    nsKeyword = s.value.toString();
+                }
                 GraphTargetItem propItem = null;
                 s = lex();
                 String nsSuffix = "";
                 GraphTargetItem ns = null;
                 if (s.type == SymbolType.NAMESPACE_OP) {
-                    ns = new UnresolvedAVM2Item(new ArrayList<>(), importedClasses, false, null, lexer.yyline(), new DottedChain(new String[]{propName}, new String[]{""} /*FIXME ???*/), null, openedNamespaces, abcIndex);
-                    variables.add((UnresolvedAVM2Item) ns);
+                    if (nsKeyword == null) {
+                        ns = new UnresolvedAVM2Item(new ArrayList<>(), importedClasses, false, null, lexer.yyline(), new DottedChain(new String[]{propName}, new String[]{""} /*FIXME ???*/), null, openedNamespaces, abcIndex);
+                        variables.add((UnresolvedAVM2Item) ns);
+                    }
                     s = lex();
                     if (s.type == SymbolType.BRACKET_OPEN) {
                         propItem = expression(allOpenedNamespaces, thisType, pkg, needsActivation, importedClasses, openedNamespaces, registerVars, inFunction, inMethod, true, variables, false, abc);
@@ -349,6 +358,9 @@ public class ActionScript3Parser {
                         propItem = null;
                     }
                 } else {
+                    if (nsKeyword != null) {
+                        throw new AVM2ParseException(nsKeyword + " not expected in this situation", lexer.yyline());
+                    }
                     if (s.type == SymbolType.NAMESPACESUFFIX) {
                         nsSuffix = "#" + s.value;
                     } else {
@@ -359,7 +371,7 @@ public class ActionScript3Parser {
                 if (ns != null) {
                     ret = new NamespacedAVM2Item(ns, propName, propItem, ret, attr, openedNamespaces, null);
                 } else {
-                    ret = new PropertyAVM2Item(ret, attr, propName, nsSuffix, abcIndex, openedNamespaces, new ArrayList<>(), nullDot);
+                    ret = new PropertyAVM2Item(ret, attr, propName, nsSuffix, abcIndex, openedNamespaces, new ArrayList<>(), nullDot, nsKeyword, lexer.yyline());
                 }
                 s = lex();
             }
@@ -381,18 +393,30 @@ public class ActionScript3Parser {
             attribute = true;
             s = lex();
         }
-        expected(s, lexer.yyline(), SymbolGroup.IDENTIFIER, SymbolType.THIS, SymbolType.SUPER, SymbolType.STRING_OP);
+        expected(s, lexer.yyline(), SymbolGroup.IDENTIFIER, SymbolType.THIS, SymbolType.SUPER, SymbolType.STRING_OP,
+                SymbolType.PUBLIC, SymbolType.PROTECTED, SymbolType.PRIVATE, SymbolType.INTERNAL);
+        
+        String nsKeyword = null;
+        if (s.isType(SymbolType.PUBLIC, SymbolType.PROTECTED, SymbolType.PRIVATE, SymbolType.INTERNAL)) {
+            nsKeyword = s.value.toString();
+        }
         name2 += s.value.toString();
         s = lex();
         boolean attrBracket = false;
         String nsSuffix = "";
         if (s.type == SymbolType.NAMESPACESUFFIX) {
+            if (nsKeyword != null) {
+                throw new AVM2ParseException(nsKeyword + " not expected in this situation", lexer.yyline());
+            }
             s = lex();
             nsSuffix = "#" + s.value;
         }
 
         name = name.add(attribute, name2, nsSuffix);
-        while (s.isType(SymbolType.DOT)) {
+        while (s.isType(SymbolType.DOT)) {        
+            if (nsKeyword != null) {
+                throw new AVM2ParseException(nsKeyword + " not expected in this situation", lexer.yyline());
+            }
             //name += s.value.toString(); //. or ::
             s = lex();
             name2 = "";
@@ -412,12 +436,21 @@ public class ActionScript3Parser {
                     continue;
                 }
             } else {
-                expected(s, lexer.yyline(), SymbolGroup.IDENTIFIER, SymbolType.NAMESPACE, SymbolType.MULTIPLY);
+                expected(
+                        s, lexer.yyline(), SymbolGroup.IDENTIFIER, SymbolType.NAMESPACE, SymbolType.MULTIPLY,
+                        SymbolType.PUBLIC, SymbolType.PROTECTED, SymbolType.PRIVATE, SymbolType.INTERNAL
+                );
                 name2 += s.value.toString();
+                if (s.isType(SymbolType.PUBLIC, SymbolType.PROTECTED, SymbolType.PRIVATE, SymbolType.INTERNAL)) {
+                    nsKeyword = s.value.toString();
+                }
             }
             s = lex();
             nsSuffix = "";
             if (s.type == SymbolType.NAMESPACESUFFIX) {
+                if (nsKeyword != null) {
+                    throw new AVM2ParseException(nsKeyword + " not expected in this situation", lexer.yyline());
+                }
                 nsSuffix = "#" + s.value;
                 s = lex();
             }
@@ -439,6 +472,8 @@ public class ActionScript3Parser {
             }
             name = name.getWithoutLast();
             s = lex();
+        } else if (nsKeyword != null) {
+            throw new AVM2ParseException(nsKeyword + " not expected in this situation", lexer.yyline());
         }
 
         GraphTargetItem ret = null;
@@ -449,16 +484,20 @@ public class ActionScript3Parser {
             ret = unr;
         }
         if (nsname != null) {
-            UnresolvedAVM2Item ns = new UnresolvedAVM2Item(new ArrayList<>(), importedClasses, typeOnly, null, lexer.yyline(), new DottedChain(new String[]{nsname}), null, openedNamespaces, abcIndex);
-            variables.add(ns);
-            ret = new NamespacedAVM2Item(ns, nsprop, nspropItem, ret, nsAtribute, openedNamespaces, null);
+            if (nsKeyword != null && nspropItem == null) {
+                ret = new PropertyAVM2Item(ret, nsAtribute, nsprop, nsSuffix, abcIndex, openedNamespaces, new ArrayList<MethodBody>(), false, nsKeyword, lexer.yyline());
+            } else {
+                UnresolvedAVM2Item ns = new UnresolvedAVM2Item(new ArrayList<>(), importedClasses, typeOnly, null, lexer.yyline(), new DottedChain(new String[]{nsname}), null, openedNamespaces, abcIndex);
+                variables.add(ns);
+                ret = new NamespacedAVM2Item(ns, nsprop, nspropItem, ret, nsAtribute, openedNamespaces, null);
+            }
         }
-        if (s.type == SymbolType.BRACKET_OPEN) {
+        if (s.isType(SymbolType.BRACKET_OPEN, SymbolType.DOT, SymbolType.NULL_DOT, SymbolType.TYPENAME)) {
             lexer.pushback(s);
-            if (attrBracket) {
+            /*if (attrBracket) {
                 lexer.pushback(new ParsedSymbol(-1, SymbolGroup.OPERATOR, SymbolType.ATTRIBUTE, "@"));
                 lexer.pushback(new ParsedSymbol(-1, SymbolGroup.OPERATOR, SymbolType.DOT, "."));
-            }
+            }*/
             ret = member(allOpenedNamespaces, thisType, pkg, needsActivation, importedClasses, openedNamespaces, ret, registerVars, inFunction, inMethod, variables, abc);
         } else {
             lexer.pushback(s);
@@ -601,7 +640,7 @@ public class ActionScript3Parser {
         if (hasRest) {
             subvariables.add(new NameAVM2Item(TypeItem.UNBOUNDED, lexer.yyline(), false, paramNames.get(paramNames.size() - 1), "", null, true, openedNamespaces, abcIndex, false));
         }
-        subvariables.add(new NameAVM2Item(thisType, lexer.yyline(), false, "arguments", "", null, true, openedNamespaces, abcIndex, false));
+        subvariables.add(new NameAVM2Item(TypeItem.ARRAY, lexer.yyline(), false, "arguments", "", null, true, openedNamespaces, abcIndex, false));
         int parCnt = subvariables.size();
         Reference<Boolean> needsActivation2 = new Reference<>(false);
         if (!isInterface && !isNative) {
@@ -663,15 +702,15 @@ public class ActionScript3Parser {
         lexer.pushback(s);
         return metadata;
     }
-
+    
     private void classTraits(List<List<NamespaceItem>> allOpenedNamespaces, boolean outsidePackage, List<AssignableAVM2Item> cinitVariables, Reference<Boolean> cinitNeedsActivation, List<GraphTargetItem> cinit, List<DottedChain> importedClasses, List<NamespaceItem> openedNamespaces, NamespaceItem pkg, String classNameStr, boolean isInterface, List<GraphTargetItem> traits, List<AssignableAVM2Item> iinitVariables, Reference<Boolean> iinitNeedsActivation, Reference<GraphTargetItem> iinit, ABC abc) throws AVM2ParseException, IOException, CompilationException, InterruptedException {
 
-        NamespaceItem publicNs = new NamespaceItem("", Namespace.KIND_PACKAGE);
-        NamespaceItem privateNs = new NamespaceItem(pkg.name.toRawString().isEmpty() ? classNameStr : pkg.name.toRawString() + ":" + classNameStr, Namespace.KIND_PRIVATE);
-        NamespaceItem protectedNs = new NamespaceItem(pkg.name.toRawString().isEmpty() ? classNameStr : pkg.name.toRawString() + ":" + classNameStr, Namespace.KIND_PROTECTED);
-        NamespaceItem staticProtectedNs = new NamespaceItem(pkg.name.toRawString().isEmpty() ? classNameStr : pkg.name.toRawString() + ":" + classNameStr, Namespace.KIND_STATIC_PROTECTED);
-        NamespaceItem packageInternalNs = new NamespaceItem(pkg.name, Namespace.KIND_PACKAGE_INTERNAL);
-        NamespaceItem interfaceNs = new NamespaceItem(pkg.name.toRawString().isEmpty() ? classNameStr : pkg.name.toRawString() + ":" + classNameStr, Namespace.KIND_NAMESPACE);
+        NamespaceItem publicNs = new NamespaceItem("", Namespace.KIND_PACKAGE, -1);
+        NamespaceItem privateNs = new NamespaceItem(pkg.name.toRawString().isEmpty() ? classNameStr : pkg.name.toRawString() + ":" + classNameStr, Namespace.KIND_PRIVATE, -1);
+        NamespaceItem protectedNs = new NamespaceItem(pkg.name.toRawString().isEmpty() ? classNameStr : pkg.name.toRawString() + ":" + classNameStr, Namespace.KIND_PROTECTED, -1);
+        NamespaceItem staticProtectedNs = new NamespaceItem(pkg.name.toRawString().isEmpty() ? classNameStr : pkg.name.toRawString() + ":" + classNameStr, Namespace.KIND_STATIC_PROTECTED, -1);
+        NamespaceItem packageInternalNs = new NamespaceItem(pkg.name, Namespace.KIND_PACKAGE_INTERNAL, -1);
+        NamespaceItem interfaceNs = new NamespaceItem(pkg.name.toRawString().isEmpty() ? classNameStr : pkg.name.toRawString() + ":" + classNameStr, Namespace.KIND_NAMESPACE, -1);
 
         openedNamespaces = new ArrayList<>(openedNamespaces);
         allOpenedNamespaces.add(openedNamespaces);
@@ -797,7 +836,7 @@ public class ActionScript3Parser {
                             s = lex();
                             expected(s, lexer.yyline(), SymbolType.STRING);
                             preSymbols.add(s);
-                            namespace = new NamespaceItem((String) s.value, Namespace.KIND_NAMESPACE);
+                            namespace = new NamespaceItem((String) s.value, Namespace.KIND_NAMESPACE, lexer.yyline());
                             s = lex();
                             expected(s, lexer.yyline(), SymbolType.PARENT_CLOSE);
                             preSymbols.add(s);
@@ -823,7 +862,7 @@ public class ActionScript3Parser {
             }
             if (namespace == null && customNs != null) {
                 //Special: it will be resolved later:
-                namespace = new NamespaceItem(customNs, NamespaceItem.KIND_NAMESPACE_CUSTOM);
+                namespace = new NamespaceItem(customNs, NamespaceItem.KIND_NAMESPACE_CUSTOM, lexer.yyline());
             }
 
             switch (s.type) {
@@ -1022,7 +1061,8 @@ public class ActionScript3Parser {
             Reference<Integer> numberPrecisionRef,
             ABC abc,
             Reference<Boolean> sinitNeedsActivation,
-            List<AssignableAVM2Item> sinitVariables
+            List<AssignableAVM2Item> sinitVariables,
+            Reference<DottedChain> pkgRef
     ) throws AVM2ParseException, IOException, CompilationException, InterruptedException {
 
         Stack<Loop> sinitLoops = new Stack<>();
@@ -1044,7 +1084,8 @@ public class ActionScript3Parser {
                 sinitLoops,
                 sinitLoopLabels,
                 sinitRegisterVars,
-                sinitVariables
+                sinitVariables,
+                pkgRef
         )) {
             //empty
         }
@@ -1065,7 +1106,8 @@ public class ActionScript3Parser {
             Stack<Loop> sinitLoops,
             Map<Loop, String> sinitLoopLabels,
             HashMap<String, Integer> sinitRegisterVars,
-            List<AssignableAVM2Item> sinitVariables
+            List<AssignableAVM2Item> sinitVariables,
+            Reference<DottedChain> pkgRef
     ) throws AVM2ParseException, IOException, CompilationException, InterruptedException {
         ParsedSymbol s;
         boolean inPackage = false;
@@ -1087,20 +1129,22 @@ public class ActionScript3Parser {
                 s = lex();
             }
             expected(s, lexer.yyline(), SymbolType.CURLY_OPEN);
-            publicNs = new NamespaceItem(pkgName, Namespace.KIND_PACKAGE);
-            packageInternalNs = new NamespaceItem(pkgName, Namespace.KIND_PACKAGE_INTERNAL);
+            
+            pkgRef.setVal(pkgName);
+            publicNs = new NamespaceItem(pkgName, Namespace.KIND_PACKAGE, -1);
+            packageInternalNs = new NamespaceItem(pkgName, Namespace.KIND_PACKAGE_INTERNAL, -1);
             s = lex();
             inPackage = true;
         } else {
             publicNs = null;
-            packageInternalNs = new NamespaceItem(scriptName + "$" + scriptIndex, Namespace.KIND_PRIVATE);
+            packageInternalNs = new NamespaceItem(scriptName + "$" + scriptIndex, Namespace.KIND_PRIVATE, -1);
         }
         lexer.pushback(s);
 
         allOpenedNamespaces.add(openedNamespaces);
-        NamespaceItem emptyNs = new NamespaceItem("", Namespace.KIND_PACKAGE);
+        NamespaceItem emptyNs = new NamespaceItem("", Namespace.KIND_PACKAGE, -1);
         openedNamespaces.add(emptyNs);
-        NamespaceItem as3Ns = new NamespaceItem(AS3_NAMESPACE, Namespace.KIND_NAMESPACE);
+        NamespaceItem as3Ns = new NamespaceItem(AS3_NAMESPACE, Namespace.KIND_NAMESPACE, -1);
         as3Ns.forceResolve(abcIndex);
         openedNamespaces.add(as3Ns);
 
@@ -1239,7 +1283,7 @@ public class ActionScript3Parser {
                             if (namespaces.get(i) == null || namespaces.get(i).isEmpty()) {
                                 continue;
                             }
-                            subOpenedNamespaces.add(new NamespaceItem(namespaces.get(i) + ":" + names.get(i), Namespace.KIND_STATIC_PROTECTED));
+                            subOpenedNamespaces.add(new NamespaceItem(namespaces.get(i) + ":" + names.get(i), Namespace.KIND_STATIC_PROTECTED, -1));
                         }
                     }
 
@@ -1587,6 +1631,21 @@ public class ActionScript3Parser {
         //TODO: Order of additions as in official compiler
         return ret;
     }
+    
+    public boolean checkBasicXmlOnly(String txt) {
+        lexer = new ActionScriptLexer(txt);
+        try {
+            xml(new ArrayList<>(), null, null, new Reference<>(false), new ArrayList<>(), new ArrayList<>(), new HashMap<>(), false, false, new ArrayList<>(), null);
+            
+            ParsedSymbol s = lexer.lex();
+            if (s.type != SymbolType.EOF) {
+                return false;
+            }
+        } catch (Exception ex) {
+            return false;
+        }        
+        return true;
+    }
 
     private GraphTargetItem command(List<List<NamespaceItem>> allOpenedNamespaces, TypeItem thisType, NamespaceItem pkg, Reference<Boolean> needsActivation, List<DottedChain> importedClasses, List<NamespaceItem> openedNamespaces, Stack<Loop> loops, Map<Loop, String> loopLabels, HashMap<String, Integer> registerVars, boolean inFunction, boolean inMethod, int forinlevel, boolean mustBeCommand, List<AssignableAVM2Item> variables, ABC abc) throws IOException, AVM2ParseException, InterruptedException {
         LexBufferer buf = new LexBufferer();
@@ -1629,8 +1688,8 @@ public class ActionScript3Parser {
             switch (s.type) {
                 case USE:
                     expectedType(SymbolType.NAMESPACE);
-                    GraphTargetItem ns = type(allOpenedNamespaces, thisType, pkg, needsActivation, importedClasses, openedNamespaces, variables, abc);
-                    openedNamespaces.add(new NamespaceItem(ns.toString(), Namespace.KIND_PACKAGE /*FIXME?*/));
+                    GraphTargetItem ns = type(allOpenedNamespaces, thisType, pkg, needsActivation, importedClasses, openedNamespaces, variables, abc);                    
+                    openedNamespaces.add(new NamespaceItem(ns.toString(), NamespaceItem.KIND_NAMESPACE_CUSTOM, lexer.yyline()));
                     break;
                 case WITH:
                     needsActivation.setVal(true);
@@ -2413,12 +2472,19 @@ public class ActionScript3Parser {
                     break;
             }
         }
-        if (lhs instanceof ParenthesisItem) {
+        /*if (lhs instanceof ParenthesisItem) {
             GraphTargetItem coerced = expression(allOpenedNamespaces, thisType, pkg, needsActivation, importedClasses, openedNamespaces, registerVars, inFunction, inMethod, allowRemainder, variables, false, abc);
+            if (coerced != null) {
+                GraphTargetItem coercedType = ((ParenthesisItem) lhs).value;
+                if (coercedType instanceof UnresolvedAVM2Item) {
+                    UnresolvedAVM2Item unresolved = (UnresolvedAVM2Item) coercedType;
+                    unresolved.resolve(localData, AS3_NAMESPACE, mhs, paramTypes, constantPool, abcIndex, callStack, variables)
+                }
+            }
             if (coerced != null && isType(((ParenthesisItem) lhs).value)) {
                 lhs = new CoerceAVM2Item(null, null, ((ParenthesisItem) lhs).value, coerced);
             }
-        }
+        }*/
 
         if (debugMode) {
             System.out.println("/expression1");
@@ -2674,10 +2740,10 @@ public class ActionScript3Parser {
                     throw new AVM2ParseException("Not a property or name", lexer.yyline());
                 }
                 if (s.type == SymbolType.INCREMENT) {
-                    ret = new PreIncrementAVM2Item(null, null, varincdec);
+                    ret = new PreIncrementAVM2Item(null, null, varincdec, TypeItem.NUMBER); //TODO: how about TypeItem.INT?
                 }
                 if (s.type == SymbolType.DECREMENT) {
-                    ret = new PreDecrementAVM2Item(null, null, varincdec);
+                    ret = new PreDecrementAVM2Item(null, null, varincdec, TypeItem.NUMBER); //TODO: how about TypeItem.INT?
                 }
 
                 break;
@@ -2750,6 +2816,10 @@ public class ActionScript3Parser {
             case THIS:
             case SUPER:
             case ATTRIBUTE:
+            case PUBLIC:
+            case PRIVATE:
+            case PROTECTED:
+            case INTERNAL:
                 lexer.pushback(s);
                 ret = name(allOpenedNamespaces, thisType, pkg, needsActivation, false, openedNamespaces, registerVars, inFunction, inMethod, variables, importedClasses, abc);
                 allowMemberOrCall = true;
@@ -2818,7 +2888,7 @@ public class ActionScript3Parser {
                     openedNamespaces.add(new NamespaceItem(fullName, Namespace.KIND_NAMESPACE));
                 } else */
                 if (isStar) {
-                    openedNamespaces.add(new NamespaceItem(fullName, Namespace.KIND_PACKAGE));
+                    openedNamespaces.add(new NamespaceItem(fullName, Namespace.KIND_PACKAGE, -1));
                 } else {
                     importedClasses.add(fullName);
                 }
@@ -2847,6 +2917,7 @@ public class ActionScript3Parser {
                         }
                         usedCustomNamespaces.add(fullName);
                         lexer.pushback(s);
+                        openedNamespaces.add(new NamespaceItem(fullName, NamespaceItem.KIND_NAMESPACE_CUSTOM, lexer.yyline()));
                     } else {
                         if (!abc.hasDecimalSupport()) { // WHEN CREATING A NEW SCRIPT SEE HOW THIS IS SET WHEN IT GETS ITS ABC OBJECT!!!!!!!!!!!
                             throw new AVM2ParseException("Invalid use kind", lexer.yyline());
@@ -2965,7 +3036,8 @@ public class ActionScript3Parser {
             Reference<Integer> numberContextRef,
             ABC abc,
             Reference<Boolean> sinitNeedsActivation,
-            List<AssignableAVM2Item> sinitVariables
+            List<AssignableAVM2Item> sinitVariables,
+            Reference<DottedChain> pkgRef
     ) throws IOException, AVM2ParseException, CompilationException, InterruptedException {
 
         //int scriptPrivateNs;
@@ -2979,7 +3051,7 @@ public class ActionScript3Parser {
         Reference<Integer> numberUsageRef = new Reference<>(NumberContext.USE_NUMBER);
         Reference<Integer> numberRoundingRef = new Reference<>(NumberContext.ROUND_HALF_EVEN);
         Reference<Integer> numberPrecisionRef = new Reference<>(34);
-        scriptTraits(importedClasses, openedNamespaces, allOpenedNamespaces, scriptIndex, fileName, items, numberUsageRef, numberRoundingRef, numberPrecisionRef, abc, sinitNeedsActivation, sinitVariables);
+        scriptTraits(importedClasses, openedNamespaces, allOpenedNamespaces, scriptIndex, fileName, items, numberUsageRef, numberRoundingRef, numberPrecisionRef, abc, sinitNeedsActivation, sinitVariables, pkgRef);
 
         NumberContext nc = new NumberContext(numberUsageRef.getVal(), numberPrecisionRef.getVal(), numberRoundingRef.getVal());
         if (!nc.isDefault()) {
@@ -3017,11 +3089,12 @@ public class ActionScript3Parser {
             Reference<Integer> numberContextRef,
             ABC abc,
             Reference<Boolean> sinitNeedsActivation,
-            List<AssignableAVM2Item> sinitVariables
+            List<AssignableAVM2Item> sinitVariables,
+            Reference<DottedChain> pkgRef
     ) throws AVM2ParseException, IOException, CompilationException, InterruptedException {
         lexer = new ActionScriptLexer(str);
 
-        List<GraphTargetItem> ret = parseScript(importedClasses, openedNamespaces, allOpenedNamespaces, scriptIndex, fileName, numberContextRef, abc, sinitNeedsActivation, sinitVariables);
+        List<GraphTargetItem> ret = parseScript(importedClasses, openedNamespaces, allOpenedNamespaces, scriptIndex, fileName, numberContextRef, abc, sinitNeedsActivation, sinitVariables, pkgRef);
         if (lex().type != SymbolType.EOF) {
             throw new AVM2ParseException("Parsing finished before end of the file", lexer.yyline());
         }
@@ -3043,7 +3116,7 @@ public class ActionScript3Parser {
      * @throws AVM2ParseException On parsing error
      * @throws CompilationException On compilation error
      */
-    public void addScriptFromTree(List<AssignableAVM2Item> sinitVariables, boolean sinitNeedsActivation, List<DottedChain> importedClasses, List<NamespaceItem> openedNamespaces, List<List<NamespaceItem>> allOpenedNamespaces, List<GraphTargetItem> items, int classPos, String documentClass, Integer numberContext) throws AVM2ParseException, CompilationException {
+    public void addScriptFromTree(List<AssignableAVM2Item> sinitVariables, boolean sinitNeedsActivation, List<DottedChain> importedClasses, List<NamespaceItem> openedNamespaces, List<List<NamespaceItem>> allOpenedNamespaces, List<GraphTargetItem> items, int classPos, String documentClass, Integer numberContext, DottedChain pkg) throws AVM2ParseException, CompilationException {
         AVM2SourceGenerator gen = new AVM2SourceGenerator(abcIndex);
         SourceGeneratorLocalData localData = new SourceGeneratorLocalData(
                 new HashMap<>(), 0, Boolean.FALSE, 0);
@@ -3053,7 +3126,7 @@ public class ActionScript3Parser {
         int scriptIndex = abcIndex.getSelectedAbc().script_info.size();
         abcIndex.getSelectedAbc().script_info.add(si);
         try {
-            gen.generateScriptInfo(sinitVariables, sinitNeedsActivation, importedClasses, openedNamespaces, scriptIndex, si, allOpenedNamespaces, localData, items, classPos);
+            gen.generateScriptInfo(sinitVariables, sinitNeedsActivation, importedClasses, openedNamespaces, scriptIndex, si, allOpenedNamespaces, localData, items, classPos, pkg);
         } catch (Exception ex) {
             Logger.getLogger(ActionScript3Parser.class.getName()).log(Level.FINE, "Script generation exception", ex);
             abcIndex.getSelectedAbc().script_info.remove(si);
@@ -3089,8 +3162,9 @@ public class ActionScript3Parser {
         List<AssignableAVM2Item> sinitVariables = new ArrayList<>();
         List<DottedChain> importedClasses = new ArrayList<>();
         List<NamespaceItem> openedNamespaces = new ArrayList<>();
-        List<GraphTargetItem> traits = scriptTraitsFromString(importedClasses, openedNamespaces, allOpenedNamespaces, s, fileName, scriptIndex, numberContextRef, abc, sinitNeedsActivation, sinitVariables);
-        addScriptFromTree(sinitVariables, sinitNeedsActivation.getVal(), importedClasses, openedNamespaces, allOpenedNamespaces, traits, classPos, documentClass, numberContextRef.getVal());
+        Reference<DottedChain> pkgRef = new Reference<>(null);
+        List<GraphTargetItem> traits = scriptTraitsFromString(importedClasses, openedNamespaces, allOpenedNamespaces, s, fileName, scriptIndex, numberContextRef, abc, sinitNeedsActivation, sinitVariables, pkgRef);
+        addScriptFromTree(sinitVariables, sinitNeedsActivation.getVal(), importedClasses, openedNamespaces, allOpenedNamespaces, traits, classPos, documentClass, numberContextRef.getVal(), pkgRef.getVal());
     }
     
     public class importsAndCustomNamespaces

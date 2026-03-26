@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS
+ *  Copyright (C) 2010-2026 JPEXS
  * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -993,7 +993,7 @@ public class DecompiledEditorPane extends DebuggableEditorPane implements CaretL
             worker.execute();
             setSourceWorker = worker;
             if (!Main.isDebugging()) {
-                Main.startWork(AppStrings.translate("work.decompiling") + "...", worker);
+                Main.startWork(AppStrings.translate("work.decompiling") + "...", worker, true);
             }
         } else {
             setShowMarkers(true);

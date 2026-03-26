@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2022-2025 JPEXS
+ *  Copyright (C) 2022-2026 JPEXS
  * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -229,6 +229,13 @@ public abstract class AbstractTagTree extends JTree {
             type = TreeNodeType.FOLDER_OPEN;
         }
 
+        if (val instanceof ScriptPack) {
+            ScriptPack sp = (ScriptPack) val;            
+            if (sp.isDocumentClass()) {
+                return View.getIcon("asclassmain16");
+            }
+        }
+        
         if ((type == TreeNodeType.FOLDER || type == TreeNodeType.FOLDER_OPEN) && val instanceof FolderItem) {
             FolderItem si = (FolderItem) val;
             if (!TagTreeRoot.FOLDER_ROOT.equals(si.getName())) {
@@ -921,7 +928,8 @@ public abstract class AbstractTagTree extends JTree {
                 SetTabIndexTag.ID, PlaceImagePrivateTag.ID,
                 GenCommandTag.ID,
                 FreeCharacterTag.ID,
-                SyncFrameTag.ID
+                SyncFrameTag.ID,
+                DefineExternalStreamSound.ID
         );
     }
 

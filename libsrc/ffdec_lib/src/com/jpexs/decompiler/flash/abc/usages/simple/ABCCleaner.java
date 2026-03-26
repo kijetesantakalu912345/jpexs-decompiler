@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -351,7 +351,7 @@ public class ABCCleaner {
     }
 
     private int handleReplace(ABCSimpleUsageDetector.ItemKind kind, int index, Map<ABCSimpleUsageDetector.ItemKind, Map<Integer, Integer>> replaceMap) {
-        if (!replaceMap.get(kind).containsKey(index)) {
+        if (!replaceMap.containsKey(kind) || !replaceMap.get(kind).containsKey(index)) {
             return index;
         }
         return replaceMap.get(kind).get(index);

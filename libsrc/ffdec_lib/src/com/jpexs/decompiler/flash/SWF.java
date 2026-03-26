@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -152,6 +152,7 @@ import com.jpexs.decompiler.flash.timeline.Timelined;
 import com.jpexs.decompiler.flash.treeitems.Openable;
 import com.jpexs.decompiler.flash.treeitems.OpenableList;
 import com.jpexs.decompiler.flash.treeitems.TreeItem;
+import com.jpexs.decompiler.flash.types.BasicType;
 import com.jpexs.decompiler.flash.types.ColorTransform;
 import com.jpexs.decompiler.flash.types.MATRIX;
 import com.jpexs.decompiler.flash.types.RECT;
@@ -159,6 +160,8 @@ import com.jpexs.decompiler.flash.types.SHAPE;
 import com.jpexs.decompiler.flash.types.SOUNDINFO;
 import com.jpexs.decompiler.flash.types.annotations.Internal;
 import com.jpexs.decompiler.flash.types.annotations.SWFField;
+import com.jpexs.decompiler.flash.types.annotations.SWFType;
+import com.jpexs.decompiler.flash.types.filters.FILTER;
 import com.jpexs.decompiler.flash.types.sound.SoundInfoSoundCacheEntry;
 import com.jpexs.decompiler.flash.xfl.FLAVersion;
 import com.jpexs.decompiler.flash.xfl.XFLConverter;
@@ -175,18 +178,24 @@ import com.jpexs.helpers.ByteArrayRange;
 import com.jpexs.helpers.Cache;
 import com.jpexs.helpers.CancellableWorker;
 import com.jpexs.helpers.Helper;
+import com.jpexs.helpers.ImageResizer;
 import com.jpexs.helpers.ImmediateFuture;
 import com.jpexs.helpers.NulStream;
+import com.jpexs.helpers.PosMarkedInputStream;
 import com.jpexs.helpers.ProgressListener;
 import com.jpexs.helpers.Reference;
 import com.jpexs.helpers.SerializableImage;
 import com.jpexs.helpers.utf8.Utf8Helper;
 import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.RenderingHints;
 import java.awt.geom.AffineTransform;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -196,6 +205,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -267,16 +277,19 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
     /**
      * Movie frame rate.
      */
+    @SWFType(BasicType.UFIXED8)
     public float frameRate;
 
     /**
      * Number of frames in movie.
      */
+    @SWFType(BasicType.UI16)
     public int frameCount;
 
     /**
      * Version of SWF.
      */
+    @SWFType(BasicType.UI8)
     public int version;
 
     /**
@@ -385,6 +398,12 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
      */
     @Internal
     private volatile Map<Integer, Set<Integer>> dependentFrames;
+
+    /**
+     * Map of class to Set of dependent frame numbers.
+     */
+    @Internal
+    private volatile Map<String, Set<Integer>> dependentClassFrames;
 
     /**
      * List of ABC container tags.
@@ -574,16 +593,16 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
      * Uninitialized AS2 class traits. Class name to trait name to trait.
      */
     private volatile Map<String, Map<String, com.jpexs.decompiler.flash.action.as2.Trait>> uninitializedAs2ClassTraits = null;
-    
+
     /**
      * Detecting uninitialized class fields
      */
     @Internal
-    private boolean detectingUninitializedClassFields = false;       
-    
+    private boolean detectingUninitializedClassFields = false;
+
     @Internal
     private UninitializedClassFieldsDetector uninitializedClassFieldsDetector = new UninitializedClassFieldsDetector();
-    
+
     @Internal
     private final Object uninitializedClassFieldsLock = new Object();
 
@@ -668,21 +687,25 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
      * Event listeners
      */
     private final HashSet<EventListener> listeners = new HashSet<>();
-    
+
     /**
      * AS3 obfuscated identifiers map
-     */    
+     */
     private transient Map<String, String> obfuscatedIdentifiersMap = null;
 
     /**
-     * Lock for characters synchronization
+     * SHA 256 hash of original data
      */
-    private final Object charactersLock = new Object();
+    private String hashSha256 = "0000000000000000000000000000000000000000000000000000000000000000";
+
+    public String getHashSha256() {
+        return hashSha256;
+    }
 
     public UninitializedClassFieldsDetector getUninitializedClassFieldsDetector() {
         return uninitializedClassFieldsDetector;
-    }   
-    
+    }
+
     /**
      * Sets main GFX exporterinfo tag
      *
@@ -812,7 +835,7 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
      * @throws IOException On I/O error
      * @throws InterruptedException On interrupt
      */
-    public static void initPlayer() throws IOException, InterruptedException {
+    public static synchronized void initPlayer() throws IOException, InterruptedException {
         if (playerGlobalAbcIndex == null) {
             /*if (Configuration.getPlayerSWC() == null) {
                 throw new IOException("Player SWC library not found, please place it to " + Configuration.getFlashLibPath());
@@ -834,7 +857,7 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
             }
         }
     }
-        
+
     /**
      * Gets SWF charset. SWF version 5 or lower were non-unicode. SWF object has
      * assigned charset.
@@ -975,56 +998,54 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
      * @param withImported Include tags imported with importasset/2 tag?
      * @return Character id to character map
      */
-    public Map<Integer, CharacterTag> getCharacters(boolean withImported) {
+    public synchronized Map<Integer, CharacterTag> getCharacters(boolean withImported) {
         Map<Integer, CharacterTag> newCharacters = characters;
         Map<Integer, CharacterTag> newCharactersWithImported = charactersWithImported;
-        synchronized (charactersLock) {
-            if (newCharacters == null || newCharactersWithImported == null) {
-                if (destroyed) {
-                    return new HashMap<>();
-                }
-                Map<Integer, CharacterTag> chars = new HashMap<>();
-                Map<Integer, CharacterTag> charsWithImported = new HashMap<>();
-                Map<Integer, List<CharacterIdTag>> charIdtags = new HashMap<>();
-                Map<Integer, DefineExternalImage2> eimages = new HashMap<>();
-                parseCharacters(getTags(), eimages, chars, charIdtags);
-                charsWithImported.putAll(chars);
-                for (int importedCharacterId : importedCharacterIds.keySet()) {
-                    int exportedCharacterId = importedCharacterIds.get(importedCharacterId);
-                    SWF importedSwf = importedCharacterSourceSwfs.get(importedCharacterId);
-                    CharacterTag exportedCharacter = importedSwf.getCharacter(exportedCharacterId);
-                    charsWithImported.put(importedCharacterId, exportedCharacter);
-                    charIdtags.put(importedCharacterId, importedSwf.getCharacterIdTags(exportedCharacterId));
-                    //FIXME? eimages
+        if (newCharacters == null || newCharactersWithImported == null) {
+            if (destroyed) {
+                return new HashMap<>();
+            }
+            Map<Integer, CharacterTag> chars = new HashMap<>();
+            Map<Integer, CharacterTag> charsWithImported = new HashMap<>();
+            Map<Integer, List<CharacterIdTag>> charIdtags = new HashMap<>();
+            Map<Integer, DefineExternalImage2> eimages = new HashMap<>();
+            parseCharacters(getTags(), eimages, chars, charIdtags);
+            charsWithImported.putAll(chars);
+            for (int importedCharacterId : importedCharacterIds.keySet()) {
+                int exportedCharacterId = importedCharacterIds.get(importedCharacterId);
+                SWF importedSwf = importedCharacterSourceSwfs.get(importedCharacterId);
+                CharacterTag exportedCharacter = importedSwf.getCharacter(exportedCharacterId);
+                charsWithImported.put(importedCharacterId, exportedCharacter);
+                charIdtags.put(importedCharacterId, importedSwf.getCharacterIdTags(exportedCharacterId));
+                //FIXME? eimages
 
-                    charsWithImported.get(importedCharacterId).setImported(true, true);
-                    for (CharacterIdTag chi : charIdtags.get(importedCharacterId)) {
-                        if (chi instanceof Tag) {
-                            ((Tag) chi).setImported(true, true);
-                        }
+                charsWithImported.get(importedCharacterId).setImported(true, true);
+                for (CharacterIdTag chi : charIdtags.get(importedCharacterId)) {
+                    if (chi instanceof Tag) {
+                        ((Tag) chi).setImported(true, true);
                     }
                 }
-                Map<CharacterIdTag, Integer> charToId = new IdentityHashMap<>();
-                for (int id : charsWithImported.keySet()) {
-                    charToId.put(charsWithImported.get(id), id);
+            }
+            Map<CharacterIdTag, Integer> charToId = new IdentityHashMap<>();
+            for (int id : charsWithImported.keySet()) {
+                charToId.put(charsWithImported.get(id), id);
+            }
+            for (int id : charIdtags.keySet()) {
+                for (CharacterIdTag ch : charIdtags.get(id)) {
+                    charToId.put(ch, id);
                 }
-                for (int id : charIdtags.keySet()) {
-                    for (CharacterIdTag ch : charIdtags.get(id)) {
-                        charToId.put(ch, id);
-                    }
-                }
-
-                newCharacters = Collections.unmodifiableMap(chars);
-                newCharactersWithImported = Collections.unmodifiableMap(charsWithImported);
-                characters = newCharacters;
-                charactersWithImported = newCharactersWithImported;
-                characterToId = Collections.unmodifiableMap(charToId);
-                characterIdTags = Collections.unmodifiableMap(charIdtags);
-                externalImages2 = Collections.unmodifiableMap(eimages);
             }
 
-            return withImported ? newCharactersWithImported : newCharacters;
+            newCharacters = Collections.unmodifiableMap(chars);
+            newCharactersWithImported = Collections.unmodifiableMap(charsWithImported);
+            characters = newCharacters;
+            charactersWithImported = newCharactersWithImported;
+            characterToId = Collections.unmodifiableMap(charToId);
+            characterIdTags = Collections.unmodifiableMap(charIdtags);
+            externalImages2 = Collections.unmodifiableMap(eimages);
         }
+
+        return withImported ? newCharactersWithImported : newCharacters;        
     }
 
     /**
@@ -1099,7 +1120,9 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
                 int characterId = ((CharacterTag) tag).getCharacterId();
                 if (characterId != -1) {
                     Set<Integer> needed = new HashSet<>();
-                    tag.getNeededCharacters(needed, this);
+                    Set<String> neededClasses = new HashSet<>();
+                    //TODO: compute classes
+                    tag.getNeededCharacters(needed, neededClasses, this);
                     for (Integer needed1 : needed) {
                         Set<Integer> s = dep.get(needed1);
                         if (s == null) {
@@ -1190,11 +1213,13 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
      */
     public void computeDependentFrames() {
         Map<Integer, Set<Integer>> dep = new HashMap<>();
+        Map<String, Set<Integer>> depCls = new HashMap<>();
         Timeline tim = getTimeline();
         for (int i = 0; i < tim.getFrameCount(); i++) {
             Frame frame = tim.getFrame(i);
             Set<Integer> needed = new HashSet<>();
-            frame.getNeededCharactersDeep(needed);
+            Set<String> neededClasses = new HashSet<>();
+            frame.getNeededCharactersDeep(needed, neededClasses);
             for (Integer needed1 : needed) {
                 Set<Integer> s = dep.get(needed1);
                 if (s == null) {
@@ -1204,9 +1229,19 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
 
                 s.add(i);
             }
+            for (String needed1 : neededClasses) {
+                Set<Integer> s = depCls.get(needed1);
+                if (s == null) {
+                    s = new HashSet<>();
+                    depCls.put(needed1, s);
+                }
+
+                s.add(i);
+            }
         }
 
         dependentFrames = dep;
+        dependentClassFrames = depCls;
     }
 
     /**
@@ -1225,6 +1260,24 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
         }
 
         return dependentFrames.get(characterId);
+    }
+
+    /**
+     * Gets dependent frames for specified AS3 class.
+     *
+     * @param characterClass Character id
+     * @return Set of dependent characterids
+     */
+    public Set<Integer> getDependentFramesByClass(String characterClass) {
+        if (dependentClassFrames == null) {
+            synchronized (this) {
+                if (dependentClassFrames == null) {
+                    computeDependentFrames();
+                }
+            }
+        }
+
+        return dependentClassFrames.get(characterClass);
     }
 
     /**
@@ -1641,7 +1694,7 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
      * @param characters Map of characterId to CharacterTag
      * @param characterIdTags Map of characterId to list of CharacterIdTags
      */
-    private synchronized void parseCharacters(Iterable<Tag> list, Map<Integer, DefineExternalImage2> externalImages2, Map<Integer, CharacterTag> characters, Map<Integer, List<CharacterIdTag>> characterIdTags) {
+    private void parseCharacters(Iterable<Tag> list, Map<Integer, DefineExternalImage2> externalImages2, Map<Integer, CharacterTag> characters, Map<Integer, List<CharacterIdTag>> characterIdTags) {
         Iterator<Tag> iterator = list.iterator();
         while (iterator.hasNext()) {
             Tag t = iterator.next();
@@ -1772,6 +1825,13 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
     public void saveTo(OutputStream os, boolean gfx, boolean includeImported) throws IOException {
         checkCharset();
         byte[] newUncompressedData = saveToByteArray(gfx, includeImported);
+
+        try {
+            hashSha256 = Helper.byteArrayToHex(MessageDigest.getInstance("SHA-256").digest(newUncompressedData));
+        } catch (NoSuchAlgorithmException ex) {
+            //ignore
+        }
+
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         compress(new ByteArrayInputStream(newUncompressedData), baos, compression, lzmaProperties);
         byte[] newCompressedData = baos.toByteArray();
@@ -1906,7 +1966,7 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
             sos.writeUI8(version);
             sos.writeUI32(0); // placeholder for file length
             sos.writeRECT(displayRect);
-            sos.writeFIXED8(frameRate);
+            sos.writeUFIXED8(frameRate);
             sos.writeUI16(frameCount);
 
             sos.writeTags(getTags());
@@ -2259,6 +2319,12 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
         uncompressedData = baos.toByteArray();
         originalUncompressedData = uncompressedData;
 
+        try {
+            hashSha256 = Helper.byteArrayToHex(MessageDigest.getInstance("SHA-256").digest(uncompressedData));
+        } catch (NoSuchAlgorithmException ex) {
+            //ignore
+        }
+
         SWFInputStream sis = new SWFInputStream(this, uncompressedData);
         dumpInfo = new DumpInfoSwfNode(this, "rootswf", "", null, 0, 0);
         sis.dumpInfo = dumpInfo;
@@ -2276,7 +2342,7 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
         }
         sis.setPercentMax(fileSize);
         displayRect = sis.readRECT("displayRect");
-        frameRate = sis.readFIXED8("frameRate");
+        frameRate = sis.readUFIXED8("frameRate");
         frameCount = sis.readUI16("frameCount");
         List<Tag> tags = sis.readTagList(this, 0, parallelRead, true, !checkOnly, lazy);
         if (tags.size() > 0 && tags.get(tags.size() - 1).getId() == EndTag.ID) {
@@ -2355,7 +2421,11 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
                 if (importedSwfs.containsKey(url)) {
                     iSwf = importedSwfs.get(url);
                 } else {
-                    iSwf = resolver.resolveUrl(this.file, url);
+                    if (resolver.doIgnoreUrl(this.file, url)) {
+                        iSwf = null;
+                    } else {
+                        iSwf = resolver.resolveUrl(this.file, url);
+                    }
                     importedSwfs.put(url, iSwf);
                 }
                 if (iSwf != null) {
@@ -3372,7 +3442,7 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
         }
 
         if (!exportFileName) {
-            
+
             if (treeItem instanceof DoInitActionTag) {
                 DoInitActionTag tag = (DoInitActionTag) treeItem;
                 String expName = tag.getSwf().getExportName(tag.getCharacterId());
@@ -3381,7 +3451,7 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
                     return IdentifiersDeobfuscation.printIdentifier(this, new LinkedHashSet<>(), false, pathParts[pathParts.length - 1]);
                 }
             }
-            
+
             return treeItem.toString();
         }
 
@@ -3801,7 +3871,7 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
             if (ins instanceof ActionSetMember) {
                 usageType = "member";
             }
-            
+
             if (name instanceof DirectValueActionItem) {
                 variables.add(new MyEntry<>((DirectValueActionItem) name, constantPool));
                 usageTypes.put((DirectValueActionItem) name, usageType);
@@ -3883,7 +3953,7 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
      * @throws InterruptedException On interrupt
      */
     private static void getVariables(SWF swf, boolean insideDoInitAction, List<MyEntry<DirectValueActionItem, ConstantPool>> variables, List<GraphSourceItem> functions, HashMap<DirectValueActionItem, ConstantPool> strings, HashMap<DirectValueActionItem, String> usageTypes, ActionGraphSource code, long addr, String path) throws InterruptedException {
-        ActionLocalData localData = new ActionLocalData(null, insideDoInitAction, new HashMap<>() /*??*/, new LinkedHashSet<>());
+        ActionLocalData localData = new ActionLocalData(null, insideDoInitAction, new HashMap<>() /*??*/, new LinkedHashSet<>(), new ArrayList<>(), new ArrayList<>());
         getVariables(swf, null, localData, new TranslateStack(path), new ArrayList<>(), code, code.adr2pos(addr), variables, functions, strings, new ArrayList<>(), usageTypes, path);
     }
 
@@ -4004,9 +4074,10 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
     }
 
     /**
-     * Gets obfuscated identifiers map in this SWF and their suggested SafeStr replacement.
-     * For AS3 it calculates all replacements on first call.
-     * For AS1/2 it adds new items as they are opened in FFDec
+     * Gets obfuscated identifiers map in this SWF and their suggested SafeStr
+     * replacement. For AS3 it calculates all replacements on first call. For
+     * AS1/2 it adds new items as they are opened in FFDec
+     *
      * @return Map source identifier to SafeStr replacement
      */
     public synchronized Map<String, String> getObfuscatedIdentifiersMap() {
@@ -4022,7 +4093,7 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
         }
         return obfuscatedIdentifiersMap = ret;
     }
-    
+
     /**
      * Deobfuscates AS3 identifiers.
      *
@@ -4244,7 +4315,7 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
                                 if (classNameParts.length - 1 - pos < 0) {
                                     break;
                                 }
-                            }                                                            
+                            }
                             String changedNameStr = nameStr;
                             if (classNameParts != null) {
                                 changedNameStr = classNameParts[classNameParts.length - 1 - pos];
@@ -4488,11 +4559,10 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
      *
      * @param soundInfo Sound info
      * @param soundTag Sound tag
-     * @param resample Resample to 44kHz?
      * @param data Byte data
      */
-    public void putToCache(SOUNDINFO soundInfo, SoundTag soundTag, boolean resample, byte[] data) {
-        SoundInfoSoundCacheEntry key = new SoundInfoSoundCacheEntry(soundInfo, soundTag, resample);
+    public void putToCache(SOUNDINFO soundInfo, SoundTag soundTag, byte[] data) {
+        SoundInfoSoundCacheEntry key = new SoundInfoSoundCacheEntry(soundInfo, soundTag);
         soundCache.put(key, data);
     }
 
@@ -4544,7 +4614,7 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
         synchronized (this) {
             obfuscatedIdentifiersMap = null;
         }
-        
+
         IdentifiersDeobfuscation.clearCache();
     }
 
@@ -4715,11 +4785,10 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
      *
      * @param soundInfo Sound info
      * @param soundTag Sound tag
-     * @param resample Resample to 44kHz
      * @return Byte data
      */
-    public byte[] getFromCache(SOUNDINFO soundInfo, SoundTag soundTag, boolean resample) {
-        SoundInfoSoundCacheEntry key = new SoundInfoSoundCacheEntry(soundInfo, soundTag, resample);
+    public byte[] getFromCache(SOUNDINFO soundInfo, SoundTag soundTag) {
+        SoundInfoSoundCacheEntry key = new SoundInfoSoundCacheEntry(soundInfo, soundTag);
         if (soundCache.contains(key)) {
             return soundCache.get(key);
         }
@@ -4945,17 +5014,27 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
      * @param backGroundColor Background color
      * @param zoom Zoom
      * @param canUseSmoothing Can use smoothing
+     * @param aaScale Antialias conflation reducing scale coefficient
      * @return Image
      */
-    public static SerializableImage frameToImageGet(Timeline timeline, int frame, int time, Point cursorPosition, int mouseButton, RECT displayRect, Matrix transformation, ColorTransform colorTransform, Color backGroundColor, double zoom, boolean canUseSmoothing) {
+    public static SerializableImage frameToImageGet(Timeline timeline, int frame, int time, Point cursorPosition, int mouseButton, RECT displayRect, Matrix transformation, ColorTransform colorTransform, Color backGroundColor, double zoom, boolean canUseSmoothing, int aaScale) {
         if (timeline.getFrameCount() == 0) {
             return new SerializableImage(1, 1, SerializableImage.TYPE_INT_ARGB_PRE);
         }
 
         RECT rect = displayRect;
+
+        //When the image is empty, return 1x1 pixel transparent image
+        if (rect.getWidth() == 0 || rect.getHeight() == 0) {
+            SerializableImage image = new SerializableImage(1, 1, SerializableImage.TYPE_INT_ARGB_PRE);
+            image.fillTransparent();
+            return image;
+        }
+
         SerializableImage image = new SerializableImage(
-                rect.getWidth() == 0 ? 1 /*FIXME: is this necessary?*/ : (int) (rect.getWidth() * zoom / SWF.unitDivisor),
-                rect.getHeight() == 0 ? 1 : (int) (rect.getHeight() * zoom / SWF.unitDivisor), SerializableImage.TYPE_INT_ARGB_PRE);
+                (int) Math.ceil(rect.getWidth() * zoom * aaScale / SWF.unitDivisor),
+                (int) Math.ceil(rect.getHeight() * zoom * aaScale / SWF.unitDivisor), SerializableImage.TYPE_INT_ARGB_PRE
+        );
         if (backGroundColor == null) {
             image.fillTransparent();
         } else {
@@ -4966,13 +5045,24 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
         }
 
         Matrix m = transformation.clone();
-        m.translate(-rect.Xmin * zoom, -rect.Ymin * zoom);
-        m.scale(zoom);
+        m.translate(-rect.Xmin * zoom * aaScale, -rect.Ymin * zoom * aaScale);
+        m.scale(zoom * aaScale);
         RenderContext renderContext = new RenderContext();
         renderContext.cursorPosition = cursorPosition;
         renderContext.mouseButton = mouseButton;
+
         ExportRectangle viewRect = new ExportRectangle(rect);
-        timeline.toImage(frame, time, renderContext, image, image, false, m, new Matrix(), m, colorTransform, zoom, true, viewRect, viewRect, m, true, Timeline.DRAW_MODE_ALL, 0, canUseSmoothing, new ArrayList<>());
+
+        viewRect.xMin *= aaScale;
+        viewRect.yMin *= aaScale;
+        viewRect.xMax *= aaScale;
+        viewRect.yMax *= aaScale;
+
+        timeline.toImage(frame, time, renderContext, image, image, false, m, new Matrix(), m, colorTransform, zoom * aaScale, true, viewRect, viewRect, m, true, Timeline.DRAW_MODE_ALL, 0, canUseSmoothing, new ArrayList<>(), aaScale);
+
+        if (aaScale > 1) {
+            image = new SerializableImage(ImageResizer.resizeImage(image.getBufferedImage(), image.getWidth() / aaScale, image.getHeight() / aaScale, RenderingHints.VALUE_INTERPOLATION_BICUBIC, true));
+        }
 
         return image;
     }
@@ -6154,6 +6244,25 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
         return getRect();
     }
 
+    private void getCyclicInTags(ReadOnlyTagList tags, Map<Integer, Set<Integer>> characterToNeeded) {
+        for (Tag t : tags) {
+            if (t instanceof CharacterTag) {
+                CharacterTag cht = (CharacterTag) t;
+                if (cht.getCharacterId() != -1) {
+                    Set<Integer> needed = new HashSet<>();
+                    Set<String> neededClasses = new HashSet<>();
+                    cht.getNeededCharacters(needed, neededClasses, this);
+                    //TODO: check cyclic classes
+                    characterToNeeded.put(cht.getCharacterId(), needed);
+                }
+            }
+            if (t instanceof DefineSpriteTag) {
+                DefineSpriteTag sprite = (DefineSpriteTag) t;
+                getCyclicInTags(sprite.getTags(), characterToNeeded);
+            }
+        }
+    }
+
     /**
      * Gets cyclic character ids.
      *
@@ -6165,17 +6274,7 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
         }
         Set<Integer> ct = new HashSet<>();
         Map<Integer, Set<Integer>> characterToNeeded = new HashMap<>();
-
-        for (Tag t : getTags()) {
-            if (t instanceof CharacterTag) {
-                CharacterTag cht = (CharacterTag) t;
-                if (cht.getCharacterId() != -1) {
-                    Set<Integer> needed = new HashSet<>();
-                    cht.getNeededCharacters(needed, this);
-                    characterToNeeded.put(cht.getCharacterId(), needed);
-                }
-            }
-        }
+        getCyclicInTags(readOnlyTags, characterToNeeded);
 
         for (int chid : characterToNeeded.keySet()) {
             for (int n : characterToNeeded.get(chid)) {
@@ -6280,7 +6379,7 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
         uninitializedAs2ClassTraits = new HashMap<>();
         try {
             uninitializedAs2ClassTraits = getUninitializedClassFieldsDetector().calculateAs2UninitializedClassTraits(this);
-        } catch (Throwable t) {           
+        } catch (Throwable t) {
             //System.err.println("Calculating AS2 uninitialized fields cancelled");
             uninitializedAs2ClassTraits = null;
             throw t;
@@ -6288,18 +6387,18 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
             setDetectingUninitialized(false);
             synchronized (uninitializedClassFieldsLock) {
                 uninitializedClassFieldsLock.notifyAll();
-            }            
+            }
         }
     }
-    
+
     private synchronized void setDetectingUninitialized(boolean val) {
         this.detectingUninitializedClassFields = val;
     }
-    
+
     public synchronized boolean isDetectingUninitialized() {
         return detectingUninitializedClassFields;
     }
-    
+
     /**
      * Gets uninitialized class traits in AS2.
      *
@@ -6311,7 +6410,7 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
         }
         if (CancellableWorker.isInterrupted()) {
             throw new InterruptedException();
-        }        
+        }
         if (isDetectingUninitialized()) {
             return new LinkedHashMap<>();
         }
@@ -6327,8 +6426,8 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
                 DoInitActionTag doi = (DoInitActionTag) src;
                 String exportName = doi.getSwf().getCharacter(doi.getCharacterId()).getExportName();
                 if (exportName != null && exportName.startsWith("__Packages.")) {
-                    return true;                    
-                }                
+                    return true;
+                }
             }
         }
         return false;
@@ -6352,7 +6451,7 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
     public boolean isDestroyed() {
         return destroyed;
     }
-    
+
     public void waitForUninitializedClassDetector() {
         if (!isDetectingUninitialized()) {
             return;
@@ -6360,9 +6459,19 @@ public final class SWF implements SWFContainerItem, Timelined, Openable {
         try {
             synchronized (uninitializedClassFieldsLock) {
                 uninitializedClassFieldsLock.wait();
-            }            
+            }
         } catch (InterruptedException ex) {
             //ignore
         }
+    }
+
+    @Override
+    public Dimension getFilterDimensions() {
+        return new Dimension(0, 0);
+    }
+
+    @Override
+    public RECT getRectWithFilters() {
+        return getRect();
     }
 }

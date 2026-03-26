@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -107,9 +107,7 @@ public class SVGShapeExporter extends DefaultSVGShapeExporter {
         this.exporter = exporter;
         this.displayZoom = displayZoom;
         
-        com.jpexs.decompiler.flash.exporters.commonshape.Point p00 = strokeTransformation.transform(0, 0);
-        com.jpexs.decompiler.flash.exporters.commonshape.Point p11 = strokeTransformation.transform(1, 1);
-        thicknessScale = p00.distanceTo(p11) / Math.sqrt(2);        
+        thicknessScale = Math.sqrt(Math.abs(strokeTransformation.scaleX * strokeTransformation.scaleY - strokeTransformation.rotateSkew0 * strokeTransformation.rotateSkew1));
     }
 
     @Override
@@ -154,7 +152,7 @@ public class SVGShapeExporter extends DefaultSVGShapeExporter {
         gradient.setAttribute("id", gradientId);
         path.setAttribute("stroke", "none");
         path.setAttribute("fill", "url(#" + gradientId + ")");
-        path.setAttribute("fill-rule", "evenodd");
+        path.setAttribute("fill-rule", windingRule == ShapeTag.WIND_NONZERO ? "nonzero" : "evenodd");
         exporter.addToDefs(gradient);
     }
 
@@ -228,6 +226,7 @@ public class SVGShapeExporter extends DefaultSVGShapeExporter {
         finalizePath();
         String patternId = getPattern(bitmapId, matrix, colorTransform, smooth);
         path.setAttribute("ffdec:fill-bitmapId", "" + bitmapId);
+        path.setAttribute("fill-rule", windingRule == ShapeTag.WIND_NONZERO ? "nonzero" : "evenodd");        
         if (patternId != null) {
             path.setAttribute("style", "fill:url(#" + patternId + ")");
             return;

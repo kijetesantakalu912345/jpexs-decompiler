@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -80,7 +80,7 @@ public class BLURFILTER extends FILTER {
 
     @Override
     public String toSvg(Document document, Element filtersElement, SVGExporter exporter, String in) {
-        return blurSvg(blurX, blurY, passes, document, filtersElement, exporter, in);
+        return SvgFiltering.blur(blurX, blurY, passes, document, filtersElement, exporter, in);
     }
 
     @Override
@@ -116,6 +116,5 @@ public class BLURFILTER extends FILTER {
         }
         return this.reserved == other.reserved;
     }
-    
-    
+
 }

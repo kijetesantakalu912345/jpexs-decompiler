@@ -244,7 +244,7 @@ NamespaceSuffix = "#" {DecIntegerLiteral}
 // only allow actual actionscript regex flags to be used after a regex.
 // later in code we check if the character after the first slash is a *, and if so treat it as a comment. `/*/` or `/**/` are invalid regex anyway.
 // non flag characters in the flags section are just left as is for now. I would have had to account for them if `/**/` was valid regex.
-RegExp = \/([^\r\n/]|\\\/)+\/([gimxs]{0,5})
+RegExp = \/([^\r\n/\\]|\\.)+\/([gimxs]{0,5})
 
 %state STRING, CHARLITERAL,XMLOPENTAG,XMLCLOSETAGFINISH,XMLOPENTAGATTRIB,XMLINSTR,XMLCDATA,XMLCOMMENT,XML,OIDENTIFIER,XMLCDATAALONE,XMLCOMMENTALONE
 

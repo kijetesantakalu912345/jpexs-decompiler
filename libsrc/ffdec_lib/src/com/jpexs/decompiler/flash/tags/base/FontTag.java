@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -28,6 +28,7 @@ import com.jpexs.decompiler.flash.tags.DefineFontNameTag;
 import com.jpexs.decompiler.flash.tags.Tag;
 import com.jpexs.decompiler.flash.types.ColorTransform;
 import com.jpexs.decompiler.flash.types.GLYPHENTRY;
+import com.jpexs.decompiler.flash.types.KERNINGRECORD;
 import com.jpexs.decompiler.flash.types.RECT;
 import com.jpexs.decompiler.flash.types.SHAPE;
 import com.jpexs.decompiler.flash.types.TEXTRECORD;
@@ -36,6 +37,7 @@ import com.jpexs.helpers.ByteArrayRange;
 import com.jpexs.helpers.Helper;
 import com.jpexs.helpers.SerializableImage;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Rectangle;
 import java.awt.Shape;
@@ -339,6 +341,7 @@ public abstract class FontTag extends DrawableTag implements AloneTag {
      * @return Font file
      */
     public static File fontNameToFile(String fontName) {
+        ensureLoaded();
         if (installedFontFilesByName.containsKey(fontName)) {
             return installedFontFilesByName.get(fontName);
         }
@@ -422,6 +425,19 @@ public abstract class FontTag extends DrawableTag implements AloneTag {
      * @return System font name
      */
     public String getSystemFontName() {
+        String ret = getSystemFontNameNoDefault();
+        if (ret == null) {
+            return defaultFontName;
+        }
+        return ret;
+    }
+    
+    /**
+     * Gets system font name without backup to default font
+     * @return System font name
+     */
+    public String getSystemFontNameNoDefault() {
+        FontTag.ensureLoaded();
         int fontId = getCharacterId();
         String selectedFont = swf.sourceFontNamesMap.get(fontId);
         if (selectedFont == null) {
@@ -441,7 +457,7 @@ public abstract class FontTag extends DrawableTag implements AloneTag {
         }
 
         // findInstalledFontName always returns an available font name
-        return FontTag.findInstalledFontName(getFontName());
+        return FontTag.findInstalledFontNameNoDefault(getFontName());
     }
 
     /**
@@ -449,6 +465,7 @@ public abstract class FontTag extends DrawableTag implements AloneTag {
      * @return System font
      */
     public Font getSystemFont() {
+        FontTag.ensureLoaded();
         return FontTag.installedFontsByName.get(getSystemFontName());
     }
 
@@ -538,6 +555,7 @@ public abstract class FontTag extends DrawableTag implements AloneTag {
      * @return Font kerning pairs
      */
     protected static List<FontHelper.KerningPair> getFontKerningPairs(Font font, int size) {
+        ensureLoaded();
         if (customFontToFile.containsKey(font)) {
             if (!customFontKerningPairs.containsKey(font) || !customFontKerningPairs.get(font).containsKey(size)) {
                 if (!customFontKerningPairs.containsKey(font)) {
@@ -573,11 +591,12 @@ public abstract class FontTag extends DrawableTag implements AloneTag {
     }
 
     /**
-     * Adds custom font.
+     * Adds custom font. Useful to properly load kerning pairs from it.
      * @param font Font
      * @param file File
      */
     public static void addCustomFont(Font font, File file) {
+        ensureLoaded();
         customFontToFile.put(font, file);
     }
 
@@ -659,11 +678,11 @@ public abstract class FontTag extends DrawableTag implements AloneTag {
     }
 
     /**
-     * Finds installed font name.
+     * Finds installed font name without backup to default font name
      * @param fontName Font name
      * @return Installed font name
      */
-    public static String findInstalledFontName(String fontName) {
+    public static String findInstalledFontNameNoDefault(String fontName) {
         ensureLoaded();
         if (installedFontsByName.containsKey(fontName)) {
             return fontName;
@@ -674,7 +693,20 @@ public abstract class FontTag extends DrawableTag implements AloneTag {
                 return beforeUnderscore;
             }
         }
-        return defaultFontName;
+        return null;
+    }
+    
+    /**
+     * Finds installed font name.
+     * @param fontName Font name
+     * @return Installed font name
+     */
+    public static String findInstalledFontName(String fontName) {
+        String ret = findInstalledFontNameNoDefault(fontName);
+        if (ret == null) {
+            return defaultFontName;
+        }
+        return ret;
     }
 
     @Override
@@ -689,12 +721,12 @@ public abstract class FontTag extends DrawableTag implements AloneTag {
     }
 
     @Override
-    public synchronized void toImage(int frame, int time, int ratio, RenderContext renderContext, SerializableImage image, SerializableImage fullImage, boolean isClip, Matrix transformation, Matrix strokeTransformation, Matrix absoluteTransformation, Matrix fullTransformation, ColorTransform colorTransform, double unzoom, boolean sameImage, ExportRectangle viewRect, ExportRectangle viewRectRaw, boolean scaleStrokes, int drawMode, int blendMode, boolean canUseSmoothing) {
+    public synchronized void toImage(int frame, int time, int ratio, RenderContext renderContext, SerializableImage image, SerializableImage fullImage, boolean isClip, Matrix transformation, Matrix strokeTransformation, Matrix absoluteTransformation, Matrix fullTransformation, ColorTransform colorTransform, double unzoom, boolean sameImage, ExportRectangle viewRect, ExportRectangle viewRectRaw, boolean scaleStrokes, int drawMode, int blendMode, boolean canUseSmoothing, int aaScale) {
         SHAPERECORD.shapeListToImage(ShapeTag.WIND_EVEN_ODD, 1, swf, getGlyphShapeTable(), image, frame, Color.black, colorTransform);
     }
 
     @Override
-    public void toSVG(SVGExporter exporter, int ratio, ColorTransform colorTransform, int level, Matrix transformation, Matrix strokeTransformation) {
+    public void toSVG(int frame, int time, SVGExporter exporter, int ratio, ColorTransform colorTransform, int level, Matrix transformation, Matrix strokeTransformation) {
 
     }
 
@@ -827,4 +859,17 @@ public abstract class FontTag extends DrawableTag implements AloneTag {
      * Update tables of bounds
      */
     public abstract void updateBounds();
+    
+    @Override
+    public Dimension getFilterDimensions() {
+        return new Dimension(0, 0);                
+    }
+    
+    public List<KERNINGRECORD> getKerningTable() {
+        return new ArrayList<>();
+    }
+    
+    public void setKerningTable(List<KERNINGRECORD> kerningTable) {
+        
+    }
 }

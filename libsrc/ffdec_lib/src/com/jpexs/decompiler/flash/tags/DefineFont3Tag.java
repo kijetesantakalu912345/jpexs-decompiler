@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -757,4 +757,14 @@ public class DefineFont3Tag extends FontTag {
         }
         return getCharset();
     }
+    
+    @Override
+    public List<KERNINGRECORD> getKerningTable() {
+        return fontKerningTable;
+    }   
+
+    @Override
+    public void setKerningTable(List<KERNINGRECORD> kerningTable) {
+        fontKerningTable = kerningTable;
+    }        
 }

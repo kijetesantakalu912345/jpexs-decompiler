@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -120,7 +120,7 @@ public class ActionSetProperty extends Action {
                 if (dec.object instanceof GetPropertyActionItem) {
                     GetPropertyActionItem gp = (GetPropertyActionItem) dec.object;
                     if (gp.target.valueEquals(target) && gp.propertyIndex == indexInt) {
-                        output.add(new PostIncrementActionItem(this, lineStartAction, gp));
+                        stack.addToOutput(new PostIncrementActionItem(this, lineStartAction, gp));
                         return;
                     }
                 }
@@ -140,7 +140,7 @@ public class ActionSetProperty extends Action {
                 if (dec.object instanceof GetPropertyActionItem) {
                     GetPropertyActionItem gp = (GetPropertyActionItem) dec.object;
                     if (gp.target.valueEquals(target) && gp.propertyIndex == indexInt) {
-                        output.add(new PostDecrementActionItem(this, lineStartAction, gp));
+                        stack.addToOutput(new PostDecrementActionItem(this, lineStartAction, gp));
                         return;
                     }
                 }
@@ -174,11 +174,11 @@ public class ActionSetProperty extends Action {
                 }
                 TemporaryRegister tr = new TemporaryRegister(sr.register.number, ret);
                 variables.put("__register" + sr.register.number, tr);
-                output.add(new TemporaryRegisterMark(tr));
+                stack.addToOutput(new TemporaryRegisterMark(tr));
                 return;
             }
         }
-        output.add(ret);
+        stack.addToOutput(ret);
     }
 
     @Override

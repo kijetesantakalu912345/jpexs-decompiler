@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS
+ *  Copyright (C) 2010-2026 JPEXS
  * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 package com.jpexs.decompiler.flash.gui.tagtree;
 
 import com.jpexs.decompiler.flash.IdentifiersDeobfuscation;
+import com.jpexs.decompiler.flash.abc.ScriptPack;
 import com.jpexs.decompiler.flash.gui.AppStrings;
 import com.jpexs.decompiler.flash.gui.MainPanel;
 import com.jpexs.decompiler.flash.gui.TreeNodeType;
@@ -90,9 +91,15 @@ import com.jpexs.decompiler.flash.tags.SyncFrameTag;
 import com.jpexs.decompiler.flash.tags.Tag;
 import com.jpexs.decompiler.flash.tags.VideoFrameTag;
 import com.jpexs.decompiler.flash.tags.gfx.DefineCompactedFont;
+import com.jpexs.decompiler.flash.tags.gfx.DefineExternalGradient;
 import com.jpexs.decompiler.flash.tags.gfx.DefineExternalImage;
 import com.jpexs.decompiler.flash.tags.gfx.DefineExternalImage2;
+import com.jpexs.decompiler.flash.tags.gfx.DefineExternalSound;
+import com.jpexs.decompiler.flash.tags.gfx.DefineExternalStreamSound;
+import com.jpexs.decompiler.flash.tags.gfx.DefineGradientMap;
 import com.jpexs.decompiler.flash.tags.gfx.DefineSubImage;
+import com.jpexs.decompiler.flash.tags.gfx.ExporterInfo;
+import com.jpexs.decompiler.flash.tags.gfx.FontTextureInfo;
 import com.jpexs.decompiler.flash.treeitems.AS3ClassTreeItem;
 import com.jpexs.decompiler.flash.treeitems.Openable;
 import com.jpexs.decompiler.flash.treeitems.OpenableList;
@@ -110,6 +117,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import javax.swing.JLabel;
 import javax.swing.JTree;
 import javax.swing.plaf.basic.BasicLabelUI;
 import javax.swing.tree.DefaultTreeCellRenderer;
@@ -166,7 +174,7 @@ public class TagTree extends AbstractTagTree {
                 value = null;
             }
 
-            super.getTreeCellRendererComponent(
+            JLabel origLabel = (JLabel) super.getTreeCellRendererComponent(
                     tree, value, sel,
                     expanded, leaf, row,
                     hasFocus);
@@ -237,9 +245,20 @@ public class TagTree extends AbstractTagTree {
                 semiTransparent = true;
             }
             int itemIndex = aTree.getFullModel().getItemIndex(val);
+                   
+            String txt = origLabel.getText();
             if (itemIndex > 1) {
-                setText(val.toString() + " [" + itemIndex + "]");
+                txt = txt + " [" + itemIndex + "]";
             }
+            
+            if (val instanceof ScriptPack) {
+                ScriptPack sp = (ScriptPack) val;
+                if (sp.isDocumentClass()) {
+                    txt = "<html><u>" + txt.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;") + "</u></html>";
+                }
+            }
+            
+            setText(txt);
 
             return this;
         }
@@ -266,12 +285,11 @@ public class TagTree extends AbstractTagTree {
                 ret = Arrays.asList(DefineTextTag.ID, DefineText2Tag.ID, DefineEditTextTag.ID);
                 break;
             case TagTreeModel.FOLDER_IMAGES:
+                ret = Arrays.asList(DefineBitsTag.ID, DefineBitsJPEG2Tag.ID, DefineBitsJPEG3Tag.ID, DefineBitsJPEG4Tag.ID, DefineBitsLosslessTag.ID, DefineBitsLossless2Tag.ID);
+                
                 if (gfx) {
-                    ret = Arrays.asList(DefineBitsTag.ID, DefineBitsJPEG2Tag.ID, DefineBitsJPEG3Tag.ID, DefineBitsJPEG4Tag.ID, DefineBitsLosslessTag.ID, DefineBitsLossless2Tag.ID,
-                            DefineExternalImage.ID, DefineExternalImage2.ID, DefineSubImage.ID
-                    );
-                } else {
-                    ret = Arrays.asList(DefineBitsTag.ID, DefineBitsJPEG2Tag.ID, DefineBitsJPEG3Tag.ID, DefineBitsJPEG4Tag.ID, DefineBitsLosslessTag.ID, DefineBitsLossless2Tag.ID);
+                    ret = new ArrayList<>(ret);
+                    ret.addAll(Arrays.asList(DefineExternalImage.ID, DefineExternalImage2.ID, DefineSubImage.ID));
                 }
                 break;
             case TagTreeModel.FOLDER_MOVIES:
@@ -279,6 +297,10 @@ public class TagTree extends AbstractTagTree {
                 break;
             case TagTreeModel.FOLDER_SOUNDS:
                 ret = Arrays.asList(DefineSoundTag.ID);
+                if (gfx) {
+                    ret = new ArrayList<>(ret);
+                    ret.add(DefineExternalSound.ID);
+                }
                 break;
             case TagTreeModel.FOLDER_BUTTONS:
                 ret = Arrays.asList(DefineButtonTag.ID, DefineButton2Tag.ID);
@@ -304,6 +326,10 @@ public class TagTree extends AbstractTagTree {
                         FreeCharacterTag.ID,
                         SyncFrameTag.ID
                 );
+                if (gfx) {
+                    ret = new ArrayList<>(ret);
+                    ret.add(DefineExternalStreamSound.ID);
+                }
                 break;
             case TagTreeModel.FOLDER_OTHERS:
                 ret = Arrays.asList(
@@ -321,6 +347,10 @@ public class TagTree extends AbstractTagTree {
                         SymbolClassTag.ID,                        
                         CharacterSetTag.ID
                 );
+                if (gfx) {
+                    ret = new ArrayList<>(ret);
+                    ret.addAll(Arrays.asList(DefineExternalGradient.ID, DefineGradientMap.ID, ExporterInfo.ID, FontTextureInfo.ID));
+                }
                 break;
         }
 
@@ -376,7 +406,7 @@ public class TagTree extends AbstractTagTree {
             }
         }
         if (value != null) {
-            String sValue = value.toString();
+            String sValue = value.toString();            
             if (sValue != null) {
                 return sValue;
             }

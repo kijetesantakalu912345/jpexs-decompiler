@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -338,6 +338,12 @@ public class NameAVM2Item extends AssignableAVM2Item {
                 break;
             case "Number":
                 ins = ins(AVM2Instructions.ConvertD);
+                break;
+            case "float":
+                ins = ins(AVM2Instructions.ConvertF);
+                break;
+            case "float4":
+                ins = ins(AVM2Instructions.ConvertF4);
                 break;
             default:
                 int type_index = AVM2SourceGenerator.resolveType(localData, ttype, ((AVM2SourceGenerator) generator).abcIndex);

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -249,9 +249,11 @@ public class DefineButtonTag extends ButtonTag implements ASMSourceContainer {
         DefineButtonCxformTag cxformTag = (DefineButtonCxformTag) swf.getCharacterIdTag(buttonId, DefineButtonCxformTag.ID);
         ColorTransform clrTrans = cxformTag == null ? null : cxformTag.buttonColorTransform;
         int maxDepth = 0;
+        //Note: There is frameIndex 0 everywhere, as below if frameDown is empty, it uses frameOver items
+        //I hope this won't cause problems...
         Frame frameUp = new Frame(timeline, 0);
-        Frame frameDown = new Frame(timeline, 0);
         Frame frameOver = new Frame(timeline, 0);
+        Frame frameDown = new Frame(timeline, 0);
         Frame frameHit = new Frame(timeline, 0);
         for (BUTTONRECORD r : this.characters) {
             if (swf.getCyclicCharacters().contains(r.characterId)) {
@@ -323,7 +325,7 @@ public class DefineButtonTag extends ButtonTag implements ASMSourceContainer {
     }
 
     @Override
-    public void getNeededCharacters(Set<Integer> needed, SWF swf) {
+    public void getNeededCharacters(Set<Integer> needed, Set<String> neededClasses, SWF swf) {
         for (BUTTONRECORD rec : characters) {
             needed.add(rec.characterId);
         }

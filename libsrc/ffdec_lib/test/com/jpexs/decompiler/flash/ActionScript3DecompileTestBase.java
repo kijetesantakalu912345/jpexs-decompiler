@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -62,6 +62,10 @@ public abstract class ActionScript3DecompileTestBase extends ActionScriptTestBas
         Configuration.registerNameFormat.set("_loc%d_");
         Configuration.showMethodBodyId.set(false);
         Configuration.displayDupInstructions.set(true);
+        
+        Configuration.as3QNameObfuscatedPropsInSquareBrackets.set(true);
+        Configuration.autoDeobfuscateIdentifiers.set(false);
+
     }
 
     protected void addSwf(String identifier, String path) throws FileNotFoundException, IOException, InterruptedException {
@@ -112,7 +116,7 @@ public abstract class ActionScript3DecompileTestBase extends ActionScriptTestBas
             Set<String> usedDeobfuscations = new LinkedHashSet<>();
             abc.bodies.get(bodyIndex).convert(swf.version, callStack, swf.getAbcIndex(), new ConvertData(), "run", ScriptExportMode.AS, isStatic, abc.bodies.get(bodyIndex).method_info, scriptIndex, clsIndex, abc, null, new ScopeStack(), 0, new NulWriter(), new ArrayList<>(), abc.instance_info.get(clsIndex).instance_traits, true, new HashSet<>(), new ArrayList<>(), usedDeobfuscations);
             writer = new HighlightedTextWriter(new CodeFormatting(), false);
-            abc.bodies.get(bodyIndex).toString(usedDeobfuscations, swf.version, callStack, swf.getAbcIndex(), "run", ScriptExportMode.AS, abc, null, writer, new ArrayList<>(), new HashSet<>());
+            abc.bodies.get(bodyIndex).toString(usedDeobfuscations, swf.version, callStack, swf.getAbcIndex(), "run", ScriptExportMode.AS, abc, null, writer, new ArrayList<>(), new HashSet<>(), -1);
         } catch (InterruptedException ex) {
             fail();
             return;

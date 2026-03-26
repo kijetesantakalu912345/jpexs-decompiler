@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -132,6 +132,12 @@ public abstract class ShapeExporterBase implements IShapeExporter {
         _lineStyles = cachedData.lineStyles;
         _fillPaths = cachedData.fillPaths;
         _linePaths = cachedData.linePaths;
+        
+        handleFillPaths(_fillPaths);
+    }
+    
+    protected void handleFillPaths(List<List<IEdge>> fillPaths) {
+        
     }
 
     /**

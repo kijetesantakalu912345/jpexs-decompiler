@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -39,15 +39,52 @@ public class MorphShapeExportSettings {
      * Zoom
      */
     public double zoom;
+    
+    /**
+     * Antialias conflation reducing scale coefficient
+     */
+    public int aaScale;
+    
+    /**
+     * Duration in seconds
+     */
+    public Double duration;
+    
+    /**
+     * Number of frames generated
+     */
+    public Integer numberOfFrames;
 
     /**
      * Constructor.
      * @param mode Mode
      * @param zoom Zoom
+     * @param aaScale Antialias conflation reducing scale coefficient
+     * @param duration Duration
+     * @param numberOfFrames Number of frames
      */
-    public MorphShapeExportSettings(MorphShapeExportMode mode, double zoom) {
+    public MorphShapeExportSettings(MorphShapeExportMode mode, double zoom, int aaScale, Double duration, Integer numberOfFrames) {
+        if (mode.hasFrames() && numberOfFrames == null) {
+            throw new IllegalArgumentException("The requested mode requires passing number of frames.");
+        }
+        if (mode.hasDuration() && duration == null) {
+            throw new IllegalArgumentException("The requested mode requires passing duration.");
+        }
         this.mode = mode;
         this.zoom = zoom;
+        this.aaScale = aaScale;
+        this.duration = duration;
+        this.numberOfFrames = numberOfFrames;
+    }
+    
+    /**
+     * Constructor.
+     * @param mode Mode
+     * @param zoom Zoom
+     * @param aaScale Antialias conflation reducing scale coefficient
+     */
+    public MorphShapeExportSettings(MorphShapeExportMode mode, double zoom, int aaScale) {
+        this(mode, zoom, aaScale, null, null);
     }
 
     /**
@@ -57,18 +94,28 @@ public class MorphShapeExportSettings {
     public String getFileExtension() {
         switch (mode) {
             case PNG_START_END:
+            case PNG_FRAMES:
+            case APNG:
                 return ".png";
             case BMP_START_END:
+            case BMP_FRAMES:
                 return ".bmp";
             case WEBP_START_END:
+            case WEBP_FRAMES:
+            case WEBP:
                 return ".webp";
             case SVG:
             case SVG_START_END:
+            case SVG_FRAMES:
                 return ".svg";
             case CANVAS:
                 return ".html";
             case SWF:
                 return ".swf";
+            case GIF:
+                return ".gif";
+            case AVI:
+                return ".avi";            
             default:
                 throw new Error("Unsupported morphshape export mode: " + mode);
         }

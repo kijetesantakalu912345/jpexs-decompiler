@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -22,6 +22,8 @@ import com.jpexs.decompiler.flash.abc.avm2.AVM2ConstantPool;
 import com.jpexs.decompiler.flash.abc.avm2.instructions.AVM2Instruction;
 import com.jpexs.decompiler.flash.abc.avm2.instructions.InstructionDefinition;
 import com.jpexs.decompiler.flash.abc.avm2.instructions.SetTypeIns;
+import com.jpexs.decompiler.flash.abc.avm2.model.CoerceAVM2Item;
+import com.jpexs.decompiler.flash.abc.avm2.model.ConvertAVM2Item;
 import com.jpexs.decompiler.flash.abc.avm2.model.DecrementAVM2Item;
 import com.jpexs.decompiler.flash.abc.avm2.model.FindPropertyAVM2Item;
 import com.jpexs.decompiler.flash.abc.avm2.model.IncrementAVM2Item;
@@ -35,6 +37,7 @@ import com.jpexs.decompiler.flash.abc.avm2.model.operations.PreDecrementAVM2Item
 import com.jpexs.decompiler.flash.abc.avm2.model.operations.PreIncrementAVM2Item;
 import com.jpexs.decompiler.graph.GraphTargetItem;
 import com.jpexs.decompiler.graph.TranslateStack;
+import com.jpexs.decompiler.graph.TypeItem;
 import com.jpexs.decompiler.graph.model.CommaExpressionItem;
 import com.jpexs.decompiler.graph.model.CompoundableBinaryOp;
 import com.jpexs.decompiler.graph.model.DuplicateItem;
@@ -107,19 +110,19 @@ public abstract class SetLocalTypeIns extends InstructionDefinition implements S
                             GraphTargetItem.checkDup(stack, output, stack.pop(), value.getNotCoerced().value);  
                             //stack.pop();     
                             //TestIncDec2 with result
-                            stack.push(new PostIncrementAVM2Item(ins, localData.lineStartInstruction, inside));
+                            stack.push(new PostIncrementAVM2Item(ins, localData.lineStartInstruction, inside, getNumberType(value)));
                             
                         } else if ((top instanceof IncrementAVM2Item) && (((IncrementAVM2Item) top).value == inside)) {                            
                             GraphTargetItem.checkDup(stack, output, stack.pop(), value);                                                        
                             //stack.pop();
                             //TestIncDec1 with result
-                            stack.push(new PreIncrementAVM2Item(ins, localData.lineStartInstruction, inside));
+                            stack.push(new PreIncrementAVM2Item(ins, localData.lineStartInstruction, inside, getNumberType(value)));
                         } else {
-                            stack.addToOutput(new PostIncrementAVM2Item(ins, localData.lineStartInstruction, inside));
+                            stack.addToOutput(new PostIncrementAVM2Item(ins, localData.lineStartInstruction, inside, getNumberType(value)));
                         }
                     } else {
                         //TestIncDec1 no result
-                        stack.addToOutput(new PostIncrementAVM2Item(ins, localData.lineStartInstruction, inside));
+                        stack.addToOutput(new PostIncrementAVM2Item(ins, localData.lineStartInstruction, inside, getNumberType(value)));
                     }
                     return;
                 }
@@ -136,18 +139,18 @@ public abstract class SetLocalTypeIns extends InstructionDefinition implements S
                             GraphTargetItem.checkDup(stack, output, stack.pop(), value.getNotCoerced().value);  
                             //stack.pop();
                             //TestIncDec2 with result
-                            stack.push(new PostDecrementAVM2Item(ins, localData.lineStartInstruction, inside));
+                            stack.push(new PostDecrementAVM2Item(ins, localData.lineStartInstruction, inside, getNumberType(value)));
                         } else if ((top instanceof DecrementAVM2Item) && (((DecrementAVM2Item) top).value == inside)) {
                             GraphTargetItem.checkDup(stack, output, stack.pop(), value);            
                             //stack.pop();
                             //TestIncDec1 with result
-                            stack.push(new PreDecrementAVM2Item(ins, localData.lineStartInstruction, inside));
+                            stack.push(new PreDecrementAVM2Item(ins, localData.lineStartInstruction, inside, getNumberType(value)));
                         } else {
-                            stack.addToOutput(new PostDecrementAVM2Item(ins, localData.lineStartInstruction, inside));
+                            stack.addToOutput(new PostDecrementAVM2Item(ins, localData.lineStartInstruction, inside, getNumberType(value)));
                         }
                     } else {
                         //TestIncDec1 no result
-                        stack.addToOutput(new PostDecrementAVM2Item(ins, localData.lineStartInstruction, inside));
+                        stack.addToOutput(new PostDecrementAVM2Item(ins, localData.lineStartInstruction, inside, getNumberType(value)));
                     }
                     return;
                 }

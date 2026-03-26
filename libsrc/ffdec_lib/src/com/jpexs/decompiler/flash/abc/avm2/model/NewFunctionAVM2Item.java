@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -131,7 +131,7 @@ public class NewFunctionAVM2Item extends AVM2Item {
             List<MethodBody> callStack = new ArrayList<>(localData.callStack);
             callStack.add(body);
             body.convert(localData.swfVersion, callStack, localData.abcIndex, new ConvertData(), path + "/inner", ScriptExportMode.AS, isStatic, methodIndex, scriptIndex, classIndex, abc, null, scopeStack, 0, new NulWriter(), localData.fullyQualifiedNames, null, false, new HashSet<>(localData.seenMethods), new ArrayList<>(), localData.usedDeobfuscations);
-            body.toString(localData.usedDeobfuscations, localData.swfVersion, callStack, localData.abcIndex, path + "/inner", ScriptExportMode.AS, abc, null, writer, localData.fullyQualifiedNames, new HashSet<>(localData.seenMethods));
+            body.toString(localData.usedDeobfuscations, localData.swfVersion, callStack, localData.abcIndex, path + "/inner", ScriptExportMode.AS, abc, null, writer, localData.fullyQualifiedNames, new HashSet<>(localData.seenMethods), localData.classIndex);
         }
         writer.endBlock();
         writer.endMethod();

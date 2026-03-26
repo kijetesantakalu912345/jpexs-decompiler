@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -1465,11 +1465,11 @@ public class SvgImporter {
     private static void svgTest(String name) throws IOException, InterruptedException {
         System.err.println("running test " + name);
         if (!new File(name + ".original.svg").exists()) {
-            URL svgUrl = URI.create("http://www.w3.org/Graphics/SVG/Test/20061213/svggen/" + name + ".svg").toURL();
+            URL svgUrl = URI.create("https://www.w3.org/Graphics/SVG/Test/20061213/svggen/" + name + ".svg").toURL();
             byte[] svgData = Helper.readStream(svgUrl.openStream());
             Helper.writeFile(name + ".orig.svg", svgData);
 
-            URL pngUrl = URI.create("http://www.w3.org/Graphics/SVG/Test/20061213/png/full-" + name + ".png").toURL();
+            URL pngUrl = URI.create("https://www.w3.org/Graphics/SVG/Test/20061213/png/full-" + name + ".png").toURL();
             byte[] pngData = Helper.readStream(pngUrl.openStream());
             Helper.writeFile(name + ".orig.png", pngData);
         }
@@ -1480,7 +1480,7 @@ public class SvgImporter {
         st = (DefineShape4Tag) (new SvgImporter().importSvg(st, svgDataS, false));
         swf.addTag(st);
         SerializableImage si = new SerializableImage(480, 360, BufferedImage.TYPE_4BYTE_ABGR);
-        BitmapExporter.export(st.getWindingRule(), st.getShapeNum(), swf, st.shapes, Color.yellow, si, 1, new Matrix(), new Matrix(), null, true, true);
+        BitmapExporter.export(st.getWindingRule(), st.getShapeNum(), swf, st.shapes, Color.yellow, si, 1, new Matrix(), new Matrix(), null, true, true, 1);
         List<Tag> li = new ArrayList<>();
         li.add(st);
         ImageIO.write(si.getBufferedImage(), "PNG", new File(name + ".imported.png"));
@@ -1491,7 +1491,7 @@ public class SvgImporter {
         swf.assignExportNamesToSymbols();
         st.shapeBounds.Xmax = (int) (si.getWidth() * SWF.unitDivisor);
         st.shapeBounds.Ymax = (int) (si.getHeight() * SWF.unitDivisor);
-        new ShapeExporter().exportShapes(null, "./outex/", swf, new ReadOnlyTagList(li), new ShapeExportSettings(ShapeExportMode.SVG, 1), null, 1);
+        new ShapeExporter().exportShapes(null, "./outex/", swf, new ReadOnlyTagList(li), new ShapeExportSettings(ShapeExportMode.SVG, 1), null, 1, 1);
     }
 
     /**
@@ -1806,7 +1806,7 @@ public class SvgImporter {
                 double y2 = parseCoordinate(lgfill.y2, 1);
 
                 Matrix tMatrix = new Matrix();
-                if (lgfill.gradientUnits == SvgGradientUnits.OBJECT_BOUNDING_BOX) {
+                if (lgfill.gradientUnits == SvgGradientUnits.OBJECT_BOUNDING_BOX) {                                                                                
                     Matrix xyMatrix = new Matrix();
                     xyMatrix.scaleX = (x2 - x1) * SWF.unitDivisor;
                     xyMatrix.rotateSkew0 = (y2 - y1) * SWF.unitDivisor;
@@ -1834,38 +1834,37 @@ public class SvgImporter {
                             .concatenate(zeroStartMatrix)
                             .concatenate(scaleMatrix);
                 } else {
-
+                    //SvgGradientUnits.USER_SPACE_ON_USE
+                    
                     x1 *= SWF.unitDivisor;
                     y1 *= SWF.unitDivisor;
                     x2 *= SWF.unitDivisor;
-                    y2 *= SWF.unitDivisor;
+                    y2 *= SWF.unitDivisor;                                        
+                    
+                    double L = 16384.0;
+                    
+                    double ux = x2 - x1;
+                    double uy = y2 - y1;
+                    double du = Math.hypot(x2 - x1, y2 - y1);
+                    double mx = (x1 + x2) / 2.0;
+                    double my = (y1 + y2) / 2.0;
+                    double ax = ux / du;
+                    double ay = uy / du;
+                    
+                    double k = du / (2 * L);
+                    
+                    double nx = -ay;
+                    double ny = ax;
+                                        
+                    double newScaleX = k * (gradientMatrix.scaleX * ax + gradientMatrix.rotateSkew1 * ay);
+                    double newRotateSkew1 = k * (gradientMatrix.scaleX * nx + gradientMatrix.rotateSkew1 * ny);
+                    double newTranslateX = gradientMatrix.scaleX * mx + gradientMatrix.rotateSkew1 * my + gradientMatrix.translateX;
 
-                    Point a = new Point(-16384.0, 0.0);
-                    Point b = new Point(16384.0, 0.0);
-                    Point c = new Point(x1, y1);
-                    Point d = new Point(x2, y2);
-
-                    if (!(a.equals(c) && b.equals(d))) {
-                        double AdeltaX = b.x - a.x;
-                        double AdeltaY = b.y - a.y;
-
-                        double BdeltaX = d.x - c.x;
-                        double BdeltaY = d.y - c.y;
-
-                        double lenAB = Math.sqrt(AdeltaX * AdeltaX + AdeltaY * AdeltaY);
-                        double lenCD = Math.sqrt(BdeltaX * BdeltaX + BdeltaY * BdeltaY);
-
-                        double rotation = angle(c.x, c.y, d.x, d.y) - angle(a.x, a.y, b.x, b.y);
-
-                        double scale = lenCD / lenAB;
-
-                        tMatrix = tMatrix
-                                .concatenate(gradientMatrix)
-                                .concatenate(Matrix.getTranslateInstance(c.x, c.y))
-                                .concatenate(Matrix.getRotateInstance(rotation * 180 / Math.PI))
-                                .concatenate(Matrix.getScaleInstance(scale))
-                                .concatenate(Matrix.getTranslateInstance(-a.x, -a.y));
-                    }
+                    double newRotateSkew0 = k * (gradientMatrix.rotateSkew0 * ax + gradientMatrix.scaleY * ay);
+                    double newScaleY = k * (gradientMatrix.rotateSkew0 * nx + gradientMatrix.scaleY * ny);
+                    double newTranslateY  = gradientMatrix.rotateSkew0 * mx + gradientMatrix.scaleY * my + gradientMatrix.translateY;
+                                        
+                    tMatrix = new Matrix(newScaleX, newScaleY, newRotateSkew0, newRotateSkew1, newTranslateX, newTranslateY);
                 }
                 fillStyle.gradientMatrix = tMatrix.toMATRIX();
             } else if (fill instanceof SvgRadialGradient) {
@@ -2029,7 +2028,8 @@ public class SvgImporter {
 
             ILINESTYLE lineStyle = shapeNum <= 3 ? new LINESTYLE() : new LINESTYLE2();
             lineStyle.setColor(getRGB(shapeNum, lineColor));
-            double scale = Math.max(transform.scaleX, transform.scaleY);
+            double scale = Math.sqrt(Math.abs(transform.scaleX * transform.scaleY - transform.rotateSkew0 * transform.rotateSkew1));
+            
             lineStyle.setWidth((int) Math.round(style.getStrokeWidth() * scale * SWF.unitDivisor));
             SvgLineCap lineCap = style.getStrokeLineCap();
             SvgLineJoin lineJoin = style.getStrokeLineJoin();

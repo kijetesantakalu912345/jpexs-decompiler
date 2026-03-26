@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -100,6 +100,11 @@ public class LocalData {
      * SWF version
      */
     public int swfVersion;
+    
+    /**
+     * Class index
+     */
+    public int classIndex;
 
     private LocalData() {
     }
@@ -133,9 +138,10 @@ public class LocalData {
      * @param exportMode Export mode 
      * @param swfVersion SWF version
      * @param usedDeobfuscations Used deobfuscations
+     * @param classIndex Class index
      * @return Local data
      */
-    public static LocalData create(List<MethodBody> callStack, AbcIndexing abcIndex, ABC abc, HashMap<Integer, String> localRegNames, List<DottedChain> fullyQualifiedNames, Set<Integer> seenMethods, ScriptExportMode exportMode, int swfVersion, Set<String> usedDeobfuscations) {
+    public static LocalData create(List<MethodBody> callStack, AbcIndexing abcIndex, ABC abc, HashMap<Integer, String> localRegNames, List<DottedChain> fullyQualifiedNames, Set<Integer> seenMethods, ScriptExportMode exportMode, int swfVersion, Set<String> usedDeobfuscations, int classIndex) {
         LocalData localData = new LocalData();
         localData.abc = abc;
         localData.constantsAvm2 = abc.constants;
@@ -148,6 +154,7 @@ public class LocalData {
         localData.swfVersion = swfVersion;
         localData.swf = abc.getSwf();
         localData.usedDeobfuscations = usedDeobfuscations;
+        localData.classIndex = classIndex;
         return localData;
     }
 }

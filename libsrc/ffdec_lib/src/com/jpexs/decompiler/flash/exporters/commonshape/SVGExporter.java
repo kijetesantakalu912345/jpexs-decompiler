@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -23,6 +23,7 @@ import com.jpexs.decompiler.flash.exporters.modes.FontExportMode;
 import com.jpexs.decompiler.flash.tags.Tag;
 import com.jpexs.decompiler.flash.tags.base.FontTag;
 import com.jpexs.decompiler.flash.tags.base.StaticTextTag;
+import com.jpexs.decompiler.flash.tags.base.TextTag;
 import com.jpexs.decompiler.flash.types.BlendMode;
 import com.jpexs.decompiler.flash.types.ColorTransform;
 import com.jpexs.decompiler.flash.types.RECT;
@@ -98,10 +99,12 @@ public class SVGExporter implements RequiresNormalizedFonts {
     private double zoom;
     
     private Map<Integer, FontTag> normalizedFonts = new LinkedHashMap<>();
-    private Map<Integer, StaticTextTag> normalizedTexts = new LinkedHashMap<>();
+    private Map<Integer, TextTag> normalizedTexts = new LinkedHashMap<>();
+    
+    private boolean buttonStyleAdded = false;
 
     @Override
-    public void setNormalizedFonts(Map<Integer, FontTag> normalizedFonts, Map<Integer, StaticTextTag> normalizedTexts) {
+    public void setNormalizedFonts(Map<Integer, FontTag> normalizedFonts, Map<Integer, TextTag> normalizedTexts) {
         this.normalizedFonts = normalizedFonts;
         this.normalizedTexts = normalizedTexts;
     }
@@ -112,7 +115,7 @@ public class SVGExporter implements RequiresNormalizedFonts {
     }
 
     @Override
-    public Map<Integer, StaticTextTag> getNormalizedTexts() {
+    public Map<Integer, TextTag> getNormalizedTexts() {
         return normalizedTexts;
     }
 
@@ -122,21 +125,27 @@ public class SVGExporter implements RequiresNormalizedFonts {
         public final ColorTransform colorTransform;
         public final int ratio;
         public final boolean clipped;
+        public int frame;
+        public int time;
 
-        public ExportKey(Tag tag, ColorTransform colorTransform, int ratio, boolean clipped) {
+        public ExportKey(Tag tag, ColorTransform colorTransform, int ratio, boolean clipped, int frame, int time) {
             this.tag = tag;
             this.colorTransform = colorTransform;
             this.ratio = ratio;
             this.clipped = clipped;
+            this.frame = frame;
+            this.time = time;
         }
 
         @Override
         public int hashCode() {
             int hash = 7;
-            hash = 79 * hash + Objects.hashCode(this.tag);
-            hash = 79 * hash + Objects.hashCode(this.colorTransform);
-            hash = 79 * hash + this.ratio;
-            hash = 79 * hash + (this.clipped ? 1 : 0);
+            hash = 11 * hash + Objects.hashCode(this.tag);
+            hash = 11 * hash + Objects.hashCode(this.colorTransform);
+            hash = 11 * hash + this.ratio;
+            hash = 11 * hash + (this.clipped ? 1 : 0);
+            hash = 11 * hash + this.frame;
+            hash = 11 * hash + this.time;
             return hash;
         }
 
@@ -158,11 +167,17 @@ public class SVGExporter implements RequiresNormalizedFonts {
             if (this.clipped != other.clipped) {
                 return false;
             }
+            if (this.frame != other.frame) {
+                return false;
+            }
+            if (this.time != other.time) {
+                return false;
+            }
             if (!Objects.equals(this.tag, other.tag)) {
                 return false;
             }
             return Objects.equals(this.colorTransform, other.colorTransform);
-        }
+        }       
     }
 
     public SVGExporter(ExportRectangle bounds, double zoom, String objectType) {
@@ -551,6 +566,11 @@ public class SVGExporter implements RequiresNormalizedFonts {
             return;
         }
         Element filtersElement = _svg.createElement("filter");
+        filtersElement.setAttribute("x", "-100%");
+        filtersElement.setAttribute("y", "-100%");
+        filtersElement.setAttribute("width", "300%");
+        filtersElement.setAttribute("height", "300%");
+        filtersElement.setAttribute("color-interpolation-filters", "sRGB");
         String filterId = getUniqueId("filter");
         String in = "SourceGraphic";
         boolean empty = true;
@@ -638,7 +658,55 @@ public class SVGExporter implements RequiresNormalizedFonts {
         }
     }
 
-    public void addStyle(String fontFace, byte[] data, FontExportMode mode) {
+    public void addStyle(String css) {
+        String value = getStyle().getTextContent();
+        value += Helper.newLine;
+        value += css;
+        getStyle().setTextContent(value);
+    }
+    
+    public void requireButtonStyle() {
+        if (buttonStyleAdded) {
+            return;
+        }
+        buttonStyleAdded = true;
+        addStyle("    .button-frame {\n"
+            + "      pointer-events: none;\n"
+            + "    }\n"
+            + "\n"
+            + "    .button-frame-up,\n"
+            + "    .button-frame-over,\n"
+            + "    .button-frame-down {\n"
+            + "      opacity: 0;\n"
+            + "    }\n"
+            + "\n"
+            + "    .button .button-frame-up {\n"
+            + "      opacity: 1;\n"
+            + "    }\n"
+            + "\n"
+            + "    .button:hover .button-frame-up {\n"
+            + "      opacity: 0;\n"
+            + "    }\n"
+            + "    .button:hover .button-frame-over {\n"
+            + "      opacity: 1;\n"
+            + "    }\n"
+            + "\n"
+            + "    .button:active .button-frame-over {\n"
+            + "      opacity: 0;\n"
+            + "    }\n"
+            + "    .button:active .button-frame-down {\n"
+            + "      opacity: 1;\n"
+            + "    }\n"
+            + "\n"
+            + "    .button-frame-hittest {\n"
+            + "      opacity: 0;\n"
+            + "      pointer-events: all;\n"
+            + "      cursor: pointer;\n"
+            + "    }\n");
+                            
+    }
+    
+    public void addFontFace(String fontFace, byte[] data, FontExportMode mode) {
         if (!fontFaces.contains(fontFace)) {
             fontFaces.add(fontFace);
             String base64Data = Helper.byteArrayToBase64String(data);

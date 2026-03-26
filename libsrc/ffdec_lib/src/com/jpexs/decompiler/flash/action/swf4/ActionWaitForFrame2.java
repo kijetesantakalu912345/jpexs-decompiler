@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -193,7 +193,7 @@ public class ActionWaitForFrame2 extends Action implements ActionStore {
             functions.putAll(functionsBackup);
             body = ActionGraph.translateViaGraph(usedDeobfuscations, false, uninitializedClassTraits, spe.getData(), insideDoInitAction, true, regNames, variables, functions, skipped, SWF.DEFAULT_VERSION, staticOperation, path, getCharset(), 0);
         }
-        output.add(new IfFrameLoadedActionItem(frame, body, this, lineStartAction));
+        stack.addToOutput(new IfFrameLoadedActionItem(frame, body, this, lineStartAction));
     }
 
     @Override

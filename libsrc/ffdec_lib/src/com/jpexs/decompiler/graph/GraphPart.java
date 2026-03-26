@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -60,74 +60,13 @@ public class GraphPart implements Serializable {
     /**
      * Level in the graph
      */
-    public int level;
-
-    /**
-     * Discovered time in DFS
-     */
-    public int discoveredTime;
-
-    /**
-     * Finished time in DFS Calculated in setTime.
-     */
-    public int finishedTime;
+    public int level; 
 
     /**
      * Closed time. The node is closed when all its input edges are already
      * visited. Calculated in Graph.calculateClosedTime.
      */
     public int closedTime;
-
-    /**
-     * Order in DFS. Calculated in setTime.
-     */
-    public int order;
-
-    /**
-     * Number of parts following this part. Calculated in setNumblocks.
-     */
-    public int numBlocks = Integer.MAX_VALUE;
-
-    /**
-     * Sets the time of this part in DFS.
-     *
-     * @param time Time
-     * @param ordered Ordered parts
-     * @param visited Visited parts
-     * @return Time
-     */
-    public int setTime(int time, List<GraphPart> ordered, List<GraphPart> visited) {
-        if (visited.contains(this)) {
-            return time;
-        }
-        discoveredTime = time;
-        visited.add(this);
-        for (GraphPart next : nextParts) {
-            if (!visited.contains(next)) {
-                time = next.setTime(time + 1, ordered, visited);
-            }
-        }
-        time++;
-        finishedTime = time;
-        order = ordered.size();
-        ordered.add(this);
-        return time;
-    }
-
-    /**
-     * Sets the number of blocks following this part.
-     *
-     * @param numBlocks Number of blocks
-     */
-    public void setNumblocks(int numBlocks) {
-        this.numBlocks = numBlocks;
-        numBlocks++;
-        for (GraphPart next : nextParts) {
-            if (next.numBlocks > numBlocks) {
-                next.setNumblocks(numBlocks);
-            }
-        }
-    }
 
     /**
      * Checks if this part leads to another part.
@@ -140,17 +79,18 @@ public class GraphPart implements Serializable {
      * @param visited Visited parts
      * @param loops Loops
      * @param throwStates Throw states
-     * @param useThrow Use throw
+     * @param firstCanBeLoopContinue Can entry point be loop continue?
      * @return True if this part leads to the other part
      * @throws InterruptedException On interrupt
      */
-    private boolean leadsTo(BaseLocalData localData, Graph gr, GraphSource code, GraphPart prev, GraphPart part, HashSet<GraphPart> visited, List<Loop> loops, List<ThrowState> throwStates, boolean useThrow) throws InterruptedException {
+    private boolean leadsTo(BaseLocalData localData, Graph gr, GraphSource code, GraphPart prev, GraphPart part, HashSet<GraphPart> visited, List<Loop> loops, List<ThrowState> throwStates, boolean firstCanBeLoopContinue) throws InterruptedException {
         if (CancellableWorker.isInterrupted()) {
             throw new InterruptedException();
         }
 
         Stack<GraphPart> todo = new Stack<>();
         todo.push(this);
+        boolean first = firstCanBeLoopContinue; //This is big HACK of how to get always-break working
 
         looptodo:
         while (!todo.isEmpty()) {
@@ -165,25 +105,27 @@ public class GraphPart implements Serializable {
                 continue;
             }
             for (Loop l : loops) {
-                if (l.phase == 1) {
+                if (l.phase == 1) {                    
                     if (l.loopContinue == thisPart) {
-                        continue looptodo;
+                        if (!first) {
+                            continue looptodo;
+                        }
                     }
                     if (l.loopPreContinue == thisPart) {
-                        continue looptodo;
+                        if (!first) {
+                            continue looptodo;
+                        }
                     }
                     if (l.loopBreak == thisPart) {
                         //return false;    //?
                     }
                 }
             }
+            first = false;
             if (visited.contains(thisPart)) {
                 continue;
             }
             visited.add(thisPart);
-            if (thisPart.end < code.size() && code.get(thisPart.end).isBranch() && (code.get(thisPart.end).ignoredLoops())) {
-                continue;
-            }
             for (GraphPart p : thisPart.nextParts) {
                 if (p == part) {
                     return true;
@@ -222,15 +164,16 @@ public class GraphPart implements Serializable {
      * @param part Part to check
      * @param loops Loops
      * @param throwStates Throw states
-     * @param useThrow Use throw
+     * @param firstCanBeLoopContinue Can entry point be loop continue?
      * @return True if this part leads to the other part
      * @throws InterruptedException On interrupt
      */
-    public boolean leadsTo(BaseLocalData localData, Graph gr, GraphSource code, GraphPart part, List<Loop> loops, List<ThrowState> throwStates, boolean useThrow) throws InterruptedException {
+    public boolean leadsTo(BaseLocalData localData, Graph gr, GraphSource code, GraphPart part, List<Loop> loops, List<ThrowState> throwStates, boolean firstCanBeLoopContinue) throws InterruptedException {
         for (Loop l : loops) {
             l.leadsToMark = 0;
         }
-        return leadsTo(localData, gr, code, null /*???*/, part, new HashSet<>(), loops, throwStates, useThrow);
+        return leadsTo(localData, gr, code, null /*???*/, part, new HashSet<>(), loops, throwStates, firstCanBeLoopContinue);
+        //return gr.partLeadsTo(localData, this, part, code, loops, throwStates, firstCanBeLoopContinue);
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -79,7 +79,7 @@ public class GRADIENTGLOWFILTER extends FILTER {
     /**
      * Strength of the gradient glow
      */
-    @SWFType(BasicType.FIXED8)
+    @SWFType(BasicType.UFIXED8)
     public float strength = 1;
 
     /**
@@ -122,7 +122,7 @@ public class GRADIENTGLOWFILTER extends FILTER {
             colorsArr[i] = gradientColors[i].toColor();
         }
         float[] ratiosArr = convertRatiosToJavaGradient(gradientRatio);
-        
+
         int type = Filtering.INNER;
         if (onTop && !innerShadow) {
             type = Filtering.FULL;
@@ -145,7 +145,13 @@ public class GRADIENTGLOWFILTER extends FILTER {
 
     @Override
     public String toSvg(Document document, Element filtersElement, SVGExporter exporter, String in) {
-        return null; //NOT SUPPORTED
+        int type = Filtering.INNER;
+        if (onTop && !innerShadow) {
+            type = Filtering.FULL;
+        } else if (!innerShadow) {
+            type = Filtering.OUTER;
+        }
+        return SvgFiltering.gradientGlow(distance, angle, gradientColors, gradientRatio, knockout, type, compositeSource, innerShadow, blurX, blurY, strength, passes, document, filtersElement, exporter, in);
     }
 
     @Override
@@ -213,6 +219,5 @@ public class GRADIENTGLOWFILTER extends FILTER {
         }
         return Arrays.equals(this.gradientRatio, other.gradientRatio);
     }
-    
-    
+
 }

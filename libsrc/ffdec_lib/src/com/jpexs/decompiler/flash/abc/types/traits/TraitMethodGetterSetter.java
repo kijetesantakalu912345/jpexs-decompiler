@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -169,7 +169,7 @@ public class TraitMethodGetterSetter extends Trait {
                     //writeUses(scriptIndex, classIndex, isStatic, abc, writer);
                     List<MethodBody> callStack = new ArrayList<>();
                     callStack.add(abc.bodies.get(bodyIndex));
-                    abc.bodies.get(bodyIndex).toString(usedDeobfuscations, swfVersion, callStack, abcIndex, path, exportMode, abc, this, writer, fullyQualifiedNames, new HashSet<>());
+                    abc.bodies.get(bodyIndex).toString(usedDeobfuscations, swfVersion, callStack, abcIndex, path, exportMode, abc, this, writer, fullyQualifiedNames, new HashSet<>(), classIndex);
                 }
             } else {
                 String retTypeRaw = abc.method_info.get(method_info).getReturnTypeRaw(abc, abc.constants, fullyQualifiedNames);

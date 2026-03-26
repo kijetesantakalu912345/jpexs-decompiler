@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,12 +17,10 @@
 package com.jpexs.decompiler.graph;
 
 import com.jpexs.decompiler.flash.BaseLocalData;
-import com.jpexs.decompiler.flash.abc.avm2.model.FindPropertyAVM2Item;
 import com.jpexs.decompiler.flash.abc.avm2.model.NewActivationAVM2Item;
 import com.jpexs.decompiler.flash.abc.avm2.model.clauses.ExceptionAVM2Item;
 import com.jpexs.decompiler.graph.model.BranchStackResistant;
 import com.jpexs.decompiler.graph.model.BreakItem;
-import com.jpexs.decompiler.graph.model.CommaExpressionItem;
 import com.jpexs.decompiler.graph.model.ContinueItem;
 import com.jpexs.decompiler.graph.model.DuplicateItem;
 import com.jpexs.decompiler.graph.model.DuplicateSourceItem;
@@ -66,7 +64,12 @@ public class TranslateStack extends Stack<GraphTargetItem> {
     public List<GraphTargetItem> outputQueue = new ArrayList<>();
 
     public BaseLocalData localData = null;
-
+    
+    public int emptyPopCount = 0;
+    
+    //Used by deobfuscation
+    public boolean doNoPushItemsToOutput = false;
+    
     @Override
     public synchronized Object clone() {
         TranslateStack st = (TranslateStack) super.clone();
@@ -88,15 +91,19 @@ public class TranslateStack extends Stack<GraphTargetItem> {
 
     @Override
     public GraphTargetItem push(GraphTargetItem item) {
-        if (!outputQueue.isEmpty()) {
+        List<GraphTargetItem> myl = outputQueue;
+        if (!outputQueue.isEmpty() && !myl.isEmpty()) {
+            finishBlock(connectedOutput);
+            /*
             if ((item instanceof FindPropertyAVM2Item) || isDupsOnly()) {
                 finishBlock(connectedOutput);
             } else {
                 outputQueue.add(item);
                 item = new CommaExpressionItem(item.dialect, null, item.lineStartItem, outputQueue);
-                outputQueue = new ArrayList<>();
+                outputQueue = new ArrayList<>();          
             }
-        }
+            */
+        }        
         if (connectedOutput != null && item != null) {
             item.outputPos = prevOutputSize + connectedOutput.size();
         }
@@ -298,16 +305,18 @@ public class TranslateStack extends Stack<GraphTargetItem> {
                 PopItem oldpop = getPop();
                 pop = null;
                 Logger.getLogger(TranslateStack.class.getName()).log(Level.FINE, "{0}: Attempt to Pop empty stack", path);
+                emptyPopCount++;
                 return oldpop;
             }
         }
         return super.pop();
     }
 
-    public void moveToStack(List<GraphTargetItem> output) {
+    public void moveToStack(List<GraphTargetItem> output) {        
+        List<GraphTargetItem> itemsBefore = new ArrayList<>();
         if (!isEmpty()) {
             return;
-        }
+        }        
         int i = output.size() - 1;
         for (; i >= 0; i--) {
             if (!(output.get(i) instanceof PushItem)) {
@@ -346,32 +355,23 @@ public class TranslateStack extends Stack<GraphTargetItem> {
         outputQueue.add(item);
         if (item instanceof ExitItem) {
             finishBlock(connectedOutput);
-        }
+        }        
     }
 
     public void finishBlock(List<GraphTargetItem> output) {
+        finishBlock(output, false);
+    }
+
+    public void finishBlock(List<GraphTargetItem> output, boolean makeBranch) {
         if (connectedOutput == null) {
             return;
         }
-        /*int pos = output.size();
         
-        for (int i = size() - 1; i >= 0; i--) {
-            GraphTargetItem item = get(i);
-            if (item instanceof BranchStackResistant) {
-                continue;
-            }
-            if (item instanceof NewActivationAVM2Item) {
-                break;
-            }
-            if (item instanceof  ExceptionAVM2Item) {
-                break;
-            }
-            remove(i);
-            if (item instanceof PopItem) {
-                continue;
-            }
-            output.add(pos, beforeExit ? item : new PushItem(item));
-        }*/
+        if (doNoPushItemsToOutput) {
+            output.addAll(outputQueue);
+            outputQueue.clear();
+            return;
+        }
 
         int clen = output.size();
         boolean isExit = false;
@@ -403,7 +403,7 @@ public class TranslateStack extends Stack<GraphTargetItem> {
         }
         for (int i = size() - 1; i >= 0; i--) {
             GraphTargetItem p = get(i);
-            if (p instanceof BranchStackResistant) {
+            if (makeBranch && p instanceof BranchStackResistant) {
                 continue;
             }
             remove(i);

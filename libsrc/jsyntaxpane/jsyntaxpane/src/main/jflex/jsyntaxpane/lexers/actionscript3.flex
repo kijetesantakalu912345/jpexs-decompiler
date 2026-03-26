@@ -58,6 +58,8 @@ import java.util.List;
 
     private boolean prevNew = false;
 
+    private int xmlNestingLevel = 0;
+
     @Override
     public void parse(Segment segment, int ofst, List<Token> tokens) {
         try {
@@ -115,10 +117,10 @@ IdentifierNs = {Identifier} ":" {Identifier}
 /* XML */
 LetterColon = [:jletter] | ":"
 XMLIdentifier = {Identifier} | {IdentifierNs}
-XMLAttribute = " "* {XMLIdentifier} " "* "=" " "* (\" {InputCharacter}* \" | "'" {InputCharacter}* "'") " "*
-XMLBeginOneTag = "<" {XMLIdentifier} {XMLAttribute}* ">" | "<{" {XMLIdentifier} "}" {XMLAttribute}* " "* ">"
-XMLBeginTag = "<" {XMLIdentifier} " " | "<{" {XMLIdentifier} "} "
-XMLEndTag = "</" {XMLIdentifier} " "* ">" | "</{" {XMLIdentifier} "}" " "* ">"
+XMLAttribute = {WhiteSpace}* {XMLIdentifier} {WhiteSpace}* "=" {WhiteSpace}* (\" {InputCharacter}* \" | "'" {InputCharacter}* "'") {WhiteSpace}*
+XMLBeginOneTag = "<" {XMLIdentifier} {XMLAttribute}* {WhiteSpace}* "/"? ">" | "<{" {XMLIdentifier} "}" {XMLAttribute}* {WhiteSpace}* "/"? ">"
+XMLBeginTag = "<" {XMLIdentifier} {WhiteSpace}+ | "<{" {XMLIdentifier} "}" {WhiteSpace}
+XMLEndTag = "</" {XMLIdentifier} {WhiteSpace}* ">" | "</{" {XMLIdentifier} "}" {WhiteSpace}* ">"
 
 /* integer literals */
 DecIntegerLiteral = (0 | -?[1-9][0-9]*) [ui]?
@@ -149,7 +151,7 @@ NamespaceSuffix = "#" {DecIntegerLiteral}
 // only allow actual actionscript regex flags to be used after a regex.
 // later in code we check if the character after the first slash is a *, and if so treat it as a comment. `/*/` or `/**/` are invalid regex anyway.
 // non flag characters in the flags section are just left as is for now. I would have had to account for them if `/**/` was valid regex.
-RegExp = \/([^\r\n/]|\\\/)+\/([gimxs]{0,5})
+RegExp = \/([^\r\n/\\]|\\.)+\/([gimxs]{0,5})
 
 VerbatimStringCharacter = [^\r\n\"]
 VerbatimString = "@\"" {VerbatimStringCharacter}* "\""
@@ -354,15 +356,20 @@ VerbatimString = "@\"" {VerbatimStringCharacter}* "\""
                                         yypushback(yytext().length() - 1);
                                         return token(TokenType.OPERATOR, yychar, 1);
                                     }
-                                    yybegin(XML);
                                     tokenStart = yychar;
                                     tokenLength = yylength();
                                     String s=yytext();
-                                    s=s.substring(1,s.length()-1);
+                                    s = s.substring(1,s.length()-1);
+                                    if (s.endsWith("/")) {
+                                        return token(TokenType.STRING, tokenStart, tokenLength);
+                                    }                                    
+
                                     if(s.contains(" ")){
                                        s=s.substring(0,s.indexOf(" "));
                                     }
-                                    xmlTagName = s;
+                                    yybegin(XML);                                    
+                                    xmlTagName = s; 
+                                    xmlNestingLevel = 1;
                                  }
 
   ">"                            { prevNew = false; return token(TokenType.OPERATOR); }
@@ -381,12 +388,18 @@ VerbatimString = "@\"" {VerbatimStringCharacter}* "\""
    ">"                             { yybegin(XML);  tokenLength += yylength();}
 }
 <XML> {
-   {XMLBeginOneTag}                 { tokenLength += yylength();}
-   {XMLEndTag}                   { tokenLength += yylength();
-                                   String endtagname=yytext();
-                                   endtagname = endtagname.substring(2,endtagname.length()-1);
-                                   endtagname = endtagname.trim();
-                                   if(endtagname.equals(xmlTagName)){
+   {XMLBeginOneTag}                 {   
+                                        tokenLength += yylength(); 
+                                        String s = yytext();
+                                        if (s.charAt(s.length() - 2) != '/') {
+                                            xmlNestingLevel++;
+                                        }
+                                    }
+   {XMLEndTag}                   { 
+                                   xmlNestingLevel--;
+
+                                   tokenLength += yylength();
+                                   if (xmlNestingLevel == 0) {
                                        yybegin(YYINITIAL);
                                        return token(TokenType.STRING, tokenStart, tokenLength);
                                    }

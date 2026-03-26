@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -159,6 +159,18 @@ public class SWFStreamTest {
             sis = new SWFInputStream(null, baos.toByteArray());
             float ff2 = sis.readFIXED8("test");
             assertEquals(ff, ff2, "Written and read value not equals. Written: " + ff + " read: " + ff2);
+            sis.close();
+        }
+        
+        float[] unsignedFloats = new float[]{200.25f, 0.25f, 255.75f, 50.25f};
+        for (float floatValue : unsignedFloats) {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            SWFOutputStream sos = new SWFOutputStream(baos, SWF.DEFAULT_VERSION, Utf8Helper.charsetName);
+            sos.writeUFIXED8(floatValue);
+            sos.close();
+            sis = new SWFInputStream(null, baos.toByteArray());
+            float ff2 = sis.readUFIXED8("test");
+            assertEquals(floatValue, ff2, "Written and read value not equals. Written: " + floatValue + " read: " + ff2);
             sis.close();
         }
     }    

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -328,7 +328,7 @@ public class MxmlcAs3ScriptReplacer extends MxmlcRunner implements As3ScriptRepl
             //This compiled code won't be used at all in original SWF, 
             //it is used only by Flex to properly compile current script
             AS3ScriptExporter ex = new AS3ScriptExporter();
-            ex.exportActionScript3(swfCopy, null, tempDir.getAbsolutePath(), removedPacks, new ScriptExportSettings(ScriptExportMode.AS_METHOD_STUBS, false, false, false /* ??? FIXME */, false, true), false, null);
+            ex.exportActionScript3(swfCopy, null, tempDir.getAbsolutePath(), removedPacks, new ScriptExportSettings(ScriptExportMode.AS_METHOD_STUBS, false, false, false /* ??? FIXME */, false), false, null);
 
             //now really remove the classes from SWF copy
             for (ABC a : modAbcs) {

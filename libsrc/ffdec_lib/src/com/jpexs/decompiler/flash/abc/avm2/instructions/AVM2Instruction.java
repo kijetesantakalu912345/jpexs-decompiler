@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -633,6 +633,11 @@ public class AVM2Instruction implements Cloneable, GraphSourceItem {
         return definition.getStackPopCount(this, aLocalData.abc);
     }
 
+    @Override
+    public int getStackDelta(BaseLocalData localData, TranslateStack stack) {
+        return getStackPushCount(localData, stack) - getStackPopCount(localData, stack);
+    }
+    
     /**
      * Gets the number of stack items that are pushed by this item.
      *
@@ -748,15 +753,6 @@ public class AVM2Instruction implements Cloneable, GraphSourceItem {
         return ret;
     }
 
-    /**
-     * Checks whether the loops are ignored.
-     *
-     * @return True if the loops are ignored, false otherwise
-     */
-    @Override
-    public boolean ignoredLoops() {
-        return false;
-    }
 
     /**
      * Sets whether this item is ignored.

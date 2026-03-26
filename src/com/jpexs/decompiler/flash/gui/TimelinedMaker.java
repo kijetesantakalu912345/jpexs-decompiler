@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2024-2025 JPEXS
+ *  Copyright (C) 2024-2026 JPEXS
  * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -51,6 +51,7 @@ import com.jpexs.decompiler.flash.types.shaperecords.EndShapeRecord;
 import com.jpexs.decompiler.flash.types.shaperecords.SHAPERECORD;
 import com.jpexs.decompiler.flash.types.shaperecords.StraightEdgeRecord;
 import com.jpexs.decompiler.flash.types.shaperecords.StyleChangeRecord;
+import java.awt.Dimension;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -81,7 +82,9 @@ public class TimelinedMaker {
                 jpegTablesTag = imageTag.getSwf().getJtt();
             }
             Set<Integer> needed = new LinkedHashSet<>();
-            imageTag.getNeededCharacters(needed, swf);
+            Set<String> neededClasses = new LinkedHashSet<>();
+            //TODO: handle classes?
+            imageTag.getNeededCharacters(needed, neededClasses, swf);
 
             List<CharacterTag> neededCopies = new ArrayList<>();
             for (int n : needed) {
@@ -211,7 +214,7 @@ public class TimelinedMaker {
             @Override
             public Timeline getTimeline() {
                 if (tim == null) {
-                    Timeline timeline = new Timeline(tag.getSwf(), this, fChId, getRect());
+                    Timeline timeline = new Timeline(tag.getSwf(), this, fChId, getRect(), getFilterDimensions());
                     initTimeline(timeline);
                     tim = timeline;
                 }
@@ -230,7 +233,7 @@ public class TimelinedMaker {
             private void initTimeline(Timeline timeline) {
                 if (tag instanceof MorphShapeTag) {
                     timeline.frameRate = PreviewExporter.MORPH_SHAPE_ANIMATION_FRAME_RATE;
-                    int framesCnt = (int) (timeline.frameRate * PreviewExporter.MORPH_SHAPE_ANIMATION_LENGTH);
+                    int framesCnt = (int) (timeline.frameRate * PreviewExporter.MORPH_SHAPE_DEFAULT_DURATION);
                     for (int i = 0; i < framesCnt; i++) {
                         Frame f = new Frame(timeline, i);
                         DepthState ds = new DepthState(tag.getSwf(), f, f);
@@ -366,6 +369,16 @@ public class TimelinedMaker {
             public SWF getSwf() {
                 return tag.getSwf();
             }
+            
+            @Override
+            public Dimension getFilterDimensions() {
+                return new Dimension(0, 0);
+            }
+
+            @Override
+            public RECT getRectWithFilters() {
+                return getRect();
+            }                        
         };
     }
 }

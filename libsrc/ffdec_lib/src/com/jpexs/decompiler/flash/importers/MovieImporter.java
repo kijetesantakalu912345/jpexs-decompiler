@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -264,17 +264,17 @@ public class MovieImporter {
             if (newWidth <= 0 || newHeight <= 0) {
                 throw new IOException("Invalid dimension");
             }
+            movie.setPauseRendering(true);
             movie.codecID = videoData.codecId;
             movie.width = newWidth;
             movie.height = newHeight;
             movie.videoFlagsDeblocking = DefineVideoStreamTag.DEBLOCKING_OFF;
             movie.videoFlagsSmoothing = true;
-            movie.setPauseRendering(true);
-
+            
             videoTags.sort(new Comparator<FLVTAG>() {
                 @Override
                 public int compare(FLVTAG o1, FLVTAG o2) {
-                    return Long.compare(o1.timeStamp, o2.tagType);
+                    return Long.compare(o1.timeStamp, o2.timeStamp);
                 }
             });
 

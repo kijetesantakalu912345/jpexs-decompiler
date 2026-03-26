@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -134,7 +134,7 @@ public class ActionGetURL extends Action {
         String fsCommandPrefix = "FSCommand:";
         if (urlString.startsWith(fsCommandPrefix)) {
             String command = urlString.substring(fsCommandPrefix.length());
-            output.add(new FSCommandActionItem(this, lineStartAction, new DirectValueActionItem(command), targetString.isEmpty() ? null : new DirectValueActionItem(targetString)));
+            stack.addToOutput(new FSCommandActionItem(this, lineStartAction, new DirectValueActionItem(command), targetString.isEmpty() ? null : new DirectValueActionItem(targetString)));
             return;
         }
         String levelPrefix = "_level";
@@ -142,10 +142,10 @@ public class ActionGetURL extends Action {
             try {
                 int num = Integer.valueOf(targetString.substring(levelPrefix.length()));
                 if (urlString.isEmpty()) {
-                    output.add(new UnLoadMovieNumActionItem(this, lineStartAction, new DirectValueActionItem((Long) (long) (int) num)));
+                    stack.addToOutput(new UnLoadMovieNumActionItem(this, lineStartAction, new DirectValueActionItem((Long) (long) (int) num)));
                 } else {
                     DirectValueActionItem urlStringDi = new DirectValueActionItem(null, null, 0, urlString, new ArrayList<>());
-                    output.add(new LoadMovieNumActionItem(this, lineStartAction, urlStringDi, new DirectValueActionItem((Long) (long) (int) num), 1/*GET*/));
+                    stack.addToOutput(new LoadMovieNumActionItem(this, lineStartAction, urlStringDi, new DirectValueActionItem((Long) (long) (int) num), 1/*GET*/));
                 }
                 return;
             } catch (NumberFormatException nfe) {
@@ -156,9 +156,9 @@ public class ActionGetURL extends Action {
 
         if (urlString.isEmpty()) {
             DirectValueActionItem targetStringDi = new DirectValueActionItem(null, null, 0, targetString, new ArrayList<>());
-            output.add(new UnLoadMovieActionItem(this, lineStartAction, targetStringDi));
+            stack.addToOutput(new UnLoadMovieActionItem(this, lineStartAction, targetStringDi));
         } else {
-            output.add(new GetURLActionItem(this, lineStartAction, urlString, targetString));
+            stack.addToOutput(new GetURLActionItem(this, lineStartAction, urlString, targetString));
         }
 
     }

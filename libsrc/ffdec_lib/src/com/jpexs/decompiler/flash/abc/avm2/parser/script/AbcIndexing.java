@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -104,25 +104,60 @@ public final class AbcIndexing {
         this(null, null);
     }
 
+    private static class AmbiguousPropertyDef {
+        private final String propName;
+       
+        private final GraphTargetItem parent;
+
+        public AmbiguousPropertyDef(String propName, GraphTargetItem parent) {
+            this.propName = propName;
+            this.parent = parent;
+        }                        
+
+        @Override
+        public int hashCode() {
+            int hash = 7;
+            hash = 79 * hash + Objects.hashCode(this.propName);
+            hash = 79 * hash + Objects.hashCode(this.parent);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final AmbiguousPropertyDef other = (AmbiguousPropertyDef) obj;
+            if (!Objects.equals(this.propName, other.propName)) {
+                return false;
+            }
+            return Objects.equals(this.parent, other.parent);
+        }
+        
+    }
+    
     /**
      * Property key
      */
     public static class PropertyDef {
-
-        private static final String BUILT_IN_NS = "http://adobe.com/AS3/2006/builtin";
-
-        private static Map<ABC, Integer> builtInNsPerAbc = new WeakHashMap<>();
-
         private final String propName;
+       
+        private final GraphTargetItem parent;
 
         private String propNsString = null;
 
-        private final GraphTargetItem parent;
-
         private int propNsIndex = 0;
+        
+        private int propNsKind = -1;
 
         private ABC abc = null;
-
+        
         /**
          * To string
          * @return String
@@ -131,17 +166,7 @@ public final class AbcIndexing {
         public String toString() {
             return parent.toString() + ":" + propName + (propNsIndex > 0 ? "[ns:" + propNsIndex + "]" : "") + (propNsString != null ? "[ns: " + propNsString + "]" : "");
         }
-
-        private void setPrivate(ABC abc, int propNsIndex) {
-            this.propNsIndex = propNsIndex;
-            this.abc = abc;
-        }
-
-        private void setProtected(ABC abc, int propNsIndex) {
-            this.abc = null;
-            this.propNsString = abc.constants.getNamespace(propNsIndex).getRawName(abc.constants);
-        }
-
+        
         /**
          * Gets property name
          * @return Property name
@@ -163,39 +188,35 @@ public final class AbcIndexing {
          *
          * @param propName Name of the property
          * @param parent Parent type (usually TypeItem)
-         * @param abc ABC for private/protected namespace resolving
+         * @param abc ABC for private/protected/namespace namespace resolving
          * @param propNsIndex Index of property(trait) namespace for
-         * private/protected namespace resolving
+         * private/protected/namespace namespace resolving
          */
-        public PropertyDef(String propName, GraphTargetItem parent, ABC abc, int propNsIndex) {
-
-            int builtInIndex = -1;
-            if (abc != null) {
-                Integer builtInNs = builtInNsPerAbc.get(abc);
-
-                if (builtInNs == null) {
-                    //we need to avoid modifying the ABC
-                    /*    builtInIndex = abc.constants.getNamespaceId(Namespace.KIND_NAMESPACE, BUILT_IN_NS, 0, true);
-                    builtInNsPerAbc.put(abc, builtInIndex);*/
-                    builtInIndex = Integer.MIN_VALUE; //??
-                } else {
-                    builtInIndex = builtInNs;
-                }
-            }
+        public PropertyDef(String propName, GraphTargetItem parent, ABC abc, int propNsIndex) {           
 
             this.propName = propName;
             this.parent = parent;
             if (abc == null || propNsIndex <= 0) {
                 return;
             }
-            int k = abc.constants.getNamespace(propNsIndex).kind;
-            if (k != Namespace.KIND_PACKAGE && propNsIndex != builtInIndex) {
-                if (k == Namespace.KIND_PROTECTED || k == Namespace.KIND_STATIC_PROTECTED) {
-                    setProtected(abc, propNsIndex);
-                } else {
-                    setPrivate(abc, propNsIndex);
-                }
-            }
+            Namespace ns = abc.constants.getNamespace(propNsIndex);
+            //this.propNsKind = ns.kind;
+            switch (ns.kind) {
+                case Namespace.KIND_PACKAGE:   
+                case Namespace.KIND_PACKAGE_INTERNAL:
+                case Namespace.KIND_PROTECTED:
+                case Namespace.KIND_STATIC_PROTECTED:
+                case Namespace.KIND_NAMESPACE:
+                    //this.abc = null;
+                    //this.propNsString = abc.constants.getNamespace(propNsIndex).getRawName(abc.constants);
+                    break;
+                
+                    //this.propNsString = abc.constants.getNamespace(propNsIndex).getRawName(abc.constants);
+                    //break;
+                default:
+                    this.abc = abc;
+                    this.propNsIndex = propNsIndex;                     
+            }            
         }
 
         /**
@@ -204,32 +225,28 @@ public final class AbcIndexing {
          * @param parent Parent type
          * @param propNsString Namespace string
          */
-        public PropertyDef(String propName, GraphTargetItem parent, String propNsString) {
+        public PropertyDef(String propName, GraphTargetItem parent, String propNsString, int nsKind) {
             this.propName = propName;
             this.parent = parent;
             this.abc = null;
-            this.propNsString = propNsString;
+            if (nsKind == Namespace.KIND_NAMESPACE) {
+                //this.propNsString = propNsString;
+            }
+            //this.propNsKind = nsKind;
+            //this.propNsString = propNsString;
         }
 
-        /**
-         * Hash code
-         * @return Hash code
-         */
         @Override
         public int hashCode() {
-            int hash = 3;
-            hash = 37 * hash + Objects.hashCode(this.propName);
-            hash = 37 * hash + Objects.hashCode(this.propNsString);
-            hash = 37 * hash + Objects.hashCode(this.parent);
-            hash = 37 * hash + this.propNsIndex;
+            int hash = 7;
+            hash = 59 * hash + Objects.hashCode(this.propName);
+            hash = 59 * hash + Objects.hashCode(this.parent);
+            hash = 59 * hash + Objects.hashCode(this.propNsString);
+            hash = 59 * hash + this.propNsIndex;
+            hash = 59 * hash + this.propNsKind;
             return hash;
         }
 
-        /**
-         * Equals
-         * @param obj Object
-         * @return True if equals
-         */
         @Override
         public boolean equals(Object obj) {
             if (this == obj) {
@@ -245,6 +262,9 @@ public final class AbcIndexing {
             if (this.propNsIndex != other.propNsIndex) {
                 return false;
             }
+            if (this.propNsKind != other.propNsKind) {
+                return false;
+            }
             if (!Objects.equals(this.propName, other.propName)) {
                 return false;
             }
@@ -253,7 +273,7 @@ public final class AbcIndexing {
             }
             return Objects.equals(this.parent, other.parent);
         }
-
+       
     }
 
     /**
@@ -267,12 +287,7 @@ public final class AbcIndexing {
 
         private int propNsIndex = 0;
 
-        private ABC abc = null;
-
-        private void setPrivate(ABC abc, int propNsIndex) {
-            this.propNsIndex = propNsIndex;
-            this.abc = abc;
-        }
+        private ABC abc = null;     
 
         /**
          * Gets property name
@@ -305,9 +320,10 @@ public final class AbcIndexing {
                 return;
             }
             int k = abc.constants.getNamespace(nsIndex).kind;
-            if (k != Namespace.KIND_PACKAGE) {
-                setPrivate(abc, nsIndex);
-            }
+            if (k == Namespace.KIND_PRIVATE) {
+                this.propNsIndex = nsIndex;
+                this.abc = abc;
+            }                       
         }
 
         /**
@@ -577,13 +593,20 @@ public final class AbcIndexing {
     private final Map<PropertyNsDef, TraitIndex> classNsProperties = new HashMap<>();
 
     private final Map<PropertyNsDef, TraitIndex> scriptProperties = new HashMap<>();
+    
+    private final Map<AmbiguousPropertyDef, List<TraitIndex>> instanceAmbiguousProperties = new HashMap<>();
+    
+    private final Map<AmbiguousPropertyDef, List<TraitIndex>> classAmbiguousProperties = new HashMap<>();
+
+    private final Map<AmbiguousPropertyDef, List<TraitIndex>> scriptAmbiguousProperties = new HashMap<>();
 
     /**
      * Rebuilds package to objects name map.
      */
-    public void rebuildPkgToObjectsNameMap() {
+    public synchronized void rebuildPkgToObjectsNameMap() {
         pkgToObjectsName.clear();
-        for (ClassDef cd : classes.keySet()) {
+        Set<ClassDef> cs = new LinkedHashSet<>(classes.keySet());
+        for (ClassDef cd : cs) {
             if (!(cd.type instanceof TypeItem)) {
                 continue;
             }
@@ -592,7 +615,8 @@ public final class AbcIndexing {
             }
             pkgToObjectsName.get(cd.pkg).add(((TypeItem) cd.type).fullTypeName.getLast());
         }
-        for (PropertyNsDef nsdef : scriptProperties.keySet()) {
+        Set<PropertyNsDef> nss = new LinkedHashSet<>(scriptProperties.keySet());
+        for (PropertyNsDef nsdef : nss) {
             if (!pkgToObjectsName.containsKey(nsdef.ns)) {
                 pkgToObjectsName.put(nsdef.ns, new LinkedHashSet<>());
             }
@@ -616,17 +640,65 @@ public final class AbcIndexing {
         return classNames;
     }
     
-    public void getClassTraits(Set<String> usedDeobfuscations, GraphTargetItem cls, ABC abc, Integer scriptIndex, boolean getStatic, boolean getInstance, boolean getInheritance, List<PropertyDef> ret, List<Boolean> staticRet) {
+    public void getClassTraits(Set<String> usedDeobfuscations, GraphTargetItem cls, ABC abc, Integer scriptIndex, boolean getStatic, boolean getInstance, boolean getInheritance, boolean getPrivate, boolean getProtected, List<PropertyDef> ret, List<Boolean> staticRet) {
         ClassIndex ci = findClass(cls, abc, scriptIndex);
         if (ci == null) {
             return;
         }
         ret.clear();
         staticRet.clear();
-        getClassIndexTraitNames(usedDeobfuscations, ret, staticRet, ci, getStatic, getInstance, getInheritance, new HashSet<>());        
+        getClassIndexTraitNames(usedDeobfuscations, ret, staticRet, ci, getStatic, getInstance, getInheritance, getPrivate, getProtected, new HashSet<>());        
     }
     
-    private void getClassIndexTraitNames(Set<String> usedDeobfuscations, List<PropertyDef> ret, List<Boolean> staticRet, ClassIndex ci, boolean getStatic, boolean getInstance, boolean getInheritance, Set<String> used) {
+    private static class UsedProperty {
+        private String propertyName;
+        private int nsKind;
+        private String namespaceStr;
+        private boolean isStatic;
+
+        public UsedProperty(String propertyName, int nsKind, String namespaceStr, boolean isStatic) {
+            this.propertyName = propertyName;
+            this.nsKind = nsKind;
+            this.namespaceStr = namespaceStr;
+            this.isStatic = isStatic;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 7;
+            hash = 79 * hash + Objects.hashCode(this.propertyName);
+            hash = 79 * hash + this.nsKind;
+            hash = 79 * hash + Objects.hashCode(this.namespaceStr);
+            hash = 79 * hash + (this.isStatic ? 1 : 0);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final UsedProperty other = (UsedProperty) obj;
+            if (this.nsKind != other.nsKind) {
+                return false;
+            }
+            if (this.isStatic != other.isStatic) {
+                return false;
+            }
+            if (!Objects.equals(this.propertyName, other.propertyName)) {
+                return false;
+            }
+            return Objects.equals(this.namespaceStr, other.namespaceStr);
+        }        
+    }
+    
+    private void getClassIndexTraitNames(Set<String> usedDeobfuscations, List<PropertyDef> ret, List<Boolean> staticRet, ClassIndex ci, boolean getStatic, boolean getInstance, boolean getInheritance, boolean getPrivate, boolean getProtected, Set<UsedProperty> used) {
         GraphTargetItem ciName = multinameToType(usedDeobfuscations, ci.abc.instance_info.get(ci.index).name_index, ci.abc, ci.abc.constants);
                 
         boolean isObject = ciName.equals(new TypeItem("Object"));
@@ -641,14 +713,18 @@ public final class AbcIndexing {
                 if (def.propNsIndex != 0) {
                     nsKind = def.abc.constants.getNamespace(def.propNsIndex).kind;                    
                 }
-                if (nsKind == Namespace.KIND_PRIVATE || nsKind == Namespace.KIND_PROTECTED || nsKind == Namespace.KIND_STATIC_PROTECTED) {
+                if (nsKind == Namespace.KIND_PRIVATE  && !getPrivate) {
+                    continue;
+                }
+                if ((nsKind == Namespace.KIND_PROTECTED || nsKind == Namespace.KIND_STATIC_PROTECTED) && !getProtected) {
                     continue;
                 }                      
-                if (Objects.equals(def.parent, ciName)) {                    
-                    if (used.contains(def.propName)) {
+                if (Objects.equals(def.parent, ciName)) {
+                    UsedProperty up = new UsedProperty(def.propName, def.propNsKind, def.propNsString, false);
+                    if (used.contains(up)) {
                         continue;
                     }
-                    used.add(def.propName);
+                    used.add(up);
                 
                     
                     ret.add(def);
@@ -665,14 +741,18 @@ public final class AbcIndexing {
                 if (def.propNsIndex != 0) {
                     nsKind = def.abc.constants.getNamespace(def.propNsIndex).kind;                    
                 }
-                if (nsKind == Namespace.KIND_PRIVATE || nsKind == Namespace.KIND_PROTECTED || nsKind == Namespace.KIND_STATIC_PROTECTED) {
+                if (nsKind == Namespace.KIND_PRIVATE  && !getPrivate) {
+                    continue;
+                }
+                if ((nsKind == Namespace.KIND_PROTECTED || nsKind == Namespace.KIND_STATIC_PROTECTED) && !getProtected) {
                     continue;
                 }
                 if (Objects.equals(def.parent, ciName)) {
-                    if (used.contains(def.propName)) {
+                    UsedProperty up = new UsedProperty(def.propName, def.propNsKind, def.propNsString, true);
+                    if (used.contains(up)) {
                         continue;
                     }
-                    used.add(def.propName);
+                    used.add(up);
                     ret.add(def);
                     staticRet.add(true);
                 }
@@ -680,11 +760,11 @@ public final class AbcIndexing {
         }
         
         if (parent != null) {
-            parent.getClassIndexTraitNames(usedDeobfuscations, ret, staticRet, ci, getStatic, getInstance, getInheritance, used);
+            parent.getClassIndexTraitNames(usedDeobfuscations, ret, staticRet, ci, getStatic, getInstance, getInheritance, getPrivate, getProtected, used);
         }
         
         if (getInheritance && ci.parent != null) {
-            getClassIndexTraitNames(usedDeobfuscations, ret, staticRet, ci.parent, getStatic, getInstance, getInheritance, used);
+            getClassIndexTraitNames(usedDeobfuscations, ret, staticRet, ci.parent, getStatic, getInstance, getInheritance, false, getProtected, used);
         }        
     }
 
@@ -807,33 +887,26 @@ public final class AbcIndexing {
      * @param prop Property to find
      * @param findStatic Find static properties
      * @param findInstance Find instance properties
+     * @param foundStatic  Whether result is static
      * @return Trait index or null
      */
-    public TraitIndex findNsProperty(PropertyNsDef prop, boolean findStatic, boolean findInstance) {
-
-        if (findStatic && classNsProperties.containsKey(prop)) {
-            if (!classNsProperties.containsKey(prop)) {
-                if (parent != null) {
-                    TraitIndex ret = parent.findNsProperty(prop, findStatic, findInstance);
-                    if (ret != null) {
-                        return ret;
-                    }
-                }
-            } else {
+    public TraitIndex findNsProperty(PropertyNsDef prop, boolean findStatic, boolean findInstance, Reference<Boolean> foundStatic) {
+        if (findStatic) {
+            if (classNsProperties.containsKey(prop)) {
+                foundStatic.setVal(true);
                 return classNsProperties.get(prop);
-            }
+            }            
         }
         if (findInstance && instanceNsProperties.containsKey(prop)) {
-            if (!instanceNsProperties.containsKey(prop)) {
-                if (parent != null) {
-                    TraitIndex ret = parent.findNsProperty(prop, findStatic, findInstance);
-                    if (ret != null) {
-                        return ret;
-                    }
-                }
-            } else {
-                return instanceNsProperties.get(prop);
-            }
+            foundStatic.setVal(false);
+            return instanceNsProperties.get(prop);
+        }
+        
+        if (parent != null) {
+            TraitIndex ret = parent.findProperty(new PropertyDef(prop.propName, new TypeItem(prop.ns), prop.abc, prop.propNsIndex), findStatic, findInstance, true, foundStatic);
+            if (ret != null) {
+                return ret;
+            }                
         }
         return null;
     }
@@ -891,7 +964,8 @@ public final class AbcIndexing {
         if (ci != null && ci.parent != null && (prop.abc == null || prop.propNsIndex == 0)) {
             AbcIndexing.ClassIndex ciParent = ci.parent;
             DottedChain parentClass = ciParent.abc.instance_info.get(ciParent.index).getName(ciParent.abc.constants).getNameWithNamespace(new LinkedHashSet<>(), ciParent.abc, ciParent.abc.constants, true);
-            TraitIndex pti = findProperty(new PropertyDef(prop.propName, new TypeItem(parentClass), prop.getPropNsString()), findStatic, findInstance, findProtected, foundStatic);
+            PropertyDef parentDef = new PropertyDef(prop.propName, new TypeItem(parentClass), (ABC) null, 0);
+            TraitIndex pti = findProperty(parentDef, findStatic, findInstance, findProtected, foundStatic);
             if (pti != null) {
                 return pti;
             }
@@ -908,6 +982,15 @@ public final class AbcIndexing {
             }
         }
         if (parent != null) {
+            if (prop.propNsIndex != 0) {
+                /*Namespace ns = getSelectedAbc().constants.getNamespace(prop.propNsIndex);
+                if (ns.kind == Namespace.KIND_NAMESPACE) {
+                    ABC parentAbc = parent.getSelectedAbc();
+                    AVM2ConstantPool parentConstants = parentAbc.constants;
+                    int parentNsId = parentConstants.getNamespaceId(Namespace.KIND_NAMESPACE, parentConstants.getStringId(ns.getName(getSelectedAbc().constants), false), 0, false);
+                    prop = new PropertyDef(prop.propName, prop.parent, parentAbc, parentNsId);
+                }*/                
+            }
             TraitIndex pti = parent.findProperty(prop, findStatic, findInstance, findProtected, foundStatic);
             if (pti != null) {
                 return pti;
@@ -1019,13 +1102,36 @@ public final class AbcIndexing {
      * @param mapNs Map to index
      * @param scriptIndex Script index
      */
-    protected void indexTraits(ABC abc, int name_index, Traits ts, Map<PropertyDef, TraitIndex> map, Map<PropertyNsDef, TraitIndex> mapNs, int scriptIndex) {
+    protected void indexTraits(ABC abc, int name_index, Traits ts, Map<PropertyDef, TraitIndex> map, Map<PropertyNsDef, TraitIndex> mapNs, Map<AmbiguousPropertyDef, List<TraitIndex>> mapAmbiguous, int scriptIndex) {        
         for (Trait t : ts.traits) {
             ValueKind propValue = null;
             if (t instanceof TraitSlotConst) {
                 TraitSlotConst tsc = (TraitSlotConst) t;
                 propValue = new ValueKind(tsc.value_index, tsc.value_kind);
             }
+            if (mapAmbiguous != null) {
+                AmbiguousPropertyDef dp = new AmbiguousPropertyDef(t.getName(abc).getName(new LinkedHashSet<>(), abc, abc.constants, new ArrayList<>() /*?*/, true, false), multinameToType(new LinkedHashSet<>(), name_index, abc, abc.constants));
+                TraitIndex ti = new TraitIndex(t, abc, getTraitReturnType(new LinkedHashSet<>(), abc, t), getTraitCallReturnType(new LinkedHashSet<>(), abc, t), propValue, multinameToType(new LinkedHashSet<>(), name_index, abc, abc.constants), scriptIndex);                
+                if (!mapAmbiguous.containsKey(dp)) {
+                    mapAmbiguous.put(dp, new ArrayList<>());
+                    mapAmbiguous.get(dp).add(ti);
+                } else {
+                    int thisNsKind = t.getName(abc).getNamespace(abc.constants).kind;
+                    boolean onlySameNsKind = true;
+                    for (TraitIndex ti2 : mapAmbiguous.get(dp)) {
+                        int prevNsKind = ti2.trait.getName(ti2.abc).getNamespace(ti2.abc.constants).kind;                                
+                        if (prevNsKind != thisNsKind) {
+                            onlySameNsKind = false;
+                            break;
+                        }
+                    }
+                    if (!onlySameNsKind) {
+                        mapAmbiguous.get(dp).add(ti);
+                    }
+                }
+                
+            }
+            
             if (map != null) {
                 PropertyDef dp = new PropertyDef(t.getName(abc).getName(new LinkedHashSet<>(), abc, abc.constants, new ArrayList<>() /*?*/, true, false), multinameToType(new LinkedHashSet<>(), name_index, abc, abc.constants), abc, abc.constants.getMultiname(t.name_index).namespace_index);
                 map.put(dp, new TraitIndex(t, abc, getTraitReturnType(new LinkedHashSet<>(), abc, t), getTraitCallReturnType(new LinkedHashSet<>(), abc, t), propValue, multinameToType(new LinkedHashSet<>(), name_index, abc, abc.constants), scriptIndex));
@@ -1039,7 +1145,7 @@ public final class AbcIndexing {
                 }
             }
 
-        }
+        }        
     }
 
     /**
@@ -1117,14 +1223,14 @@ public final class AbcIndexing {
      *
      * @param abc ABC to add
      */
-    public void addAbc(ABC abc) {
+    public synchronized void addAbc(ABC abc) {
         if (abc == null) {
             return;
         }
         List<ClassIndex> addedClasses = new ArrayList<>();
 
         for (int i = 0; i < abc.script_info.size(); i++) {
-            indexTraits(abc, 0, abc.script_info.get(i).traits, null, scriptProperties, i);
+            indexTraits(abc, 0, abc.script_info.get(i).traits, null, scriptProperties, scriptAmbiguousProperties, i);
             for (int t = 0; t < abc.script_info.get(i).traits.traits.size(); t++) {
                 Trait tr = abc.script_info.get(i).traits.traits.get(t);
                 if (tr instanceof TraitClass) {
@@ -1141,8 +1247,8 @@ public final class AbcIndexing {
                     GraphTargetItem cname = multinameToType(new LinkedHashSet<>(), ii.name_index, abc, abc.constants);
                     classes.put(new ClassDef(cname, abc, classScriptIndex), cindex);
 
-                    indexTraits(abc, ii.name_index, ii.instance_traits, instanceProperties, instanceNsProperties, i);
-                    indexTraits(abc, ii.name_index, ci.static_traits, classProperties, classNsProperties, i);
+                    indexTraits(abc, ii.name_index, ii.instance_traits, instanceProperties, instanceNsProperties, instanceAmbiguousProperties, i);
+                    indexTraits(abc, ii.name_index, ci.static_traits, classProperties, classNsProperties, classAmbiguousProperties, i);
                 }
             }
         }
@@ -1226,5 +1332,24 @@ public final class AbcIndexing {
             return false;
         }
         return isInstanceOf(ci.abc, ci.index, searchClassName);
+    }
+    
+    public Boolean isPropertyAmbiguous(ABC abc, String propertyName, GraphTargetItem parent, boolean findStatic, boolean findInstance) {
+        AmbiguousPropertyDef key = new AmbiguousPropertyDef(propertyName, parent);
+        if (findStatic && classAmbiguousProperties.containsKey(key)) {
+            return classAmbiguousProperties.get(key).size() > 1;
+        }
+        if (findInstance && instanceAmbiguousProperties.containsKey(key)) {
+            return instanceAmbiguousProperties.get(key).size() > 1;
+        }
+        ClassIndex ci = findClass(parent, abc, null);
+        if (ci != null) {
+            if (ci.parent != null) {
+                ci = ci.parent;
+                DottedChain parentClassName = ci.abc.instance_info.get(ci.index).getName(ci.abc.constants).getNameWithNamespace(new HashSet<>(), ci.abc, ci.abc.constants, false);
+                return isPropertyAmbiguous(ci.abc, propertyName, new TypeItem(parentClassName), findStatic, findInstance);
+            }
+        }
+        return null;
     }
 }

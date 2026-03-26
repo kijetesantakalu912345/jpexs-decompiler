@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -40,28 +40,23 @@ public class ActionScript3AssembledDecompileTest extends ActionScript3DecompileT
 
     @Test
     public void testAlwaysBreak() {
-        decompileMethod("assembled", "testAlwaysBreak", "if(true)\r\n"
-                + "{\r\n"
-                + "var v:* = 5;\r\n"
+        decompileMethod("assembled", "testAlwaysBreak", "var v:* = 5;\r\n"
                 + "trace(\"a\");\r\n"
+                + "while(true)\r\n"
+                + "{\r\n"
                 + "if(v > 4)\r\n"
                 + "{\r\n"
                 + "trace(\"b\");\r\n"
                 + "if(v > 10)\r\n"
                 + "{\r\n"
                 + "trace(\"c\");\r\n"
+                + "break;\r\n"
                 + "}\r\n"
-                + "else\r\n"
-                + "{\r\n"
                 + "trace(\"d\");\r\n"
-                + "addr003e:\r\n"
+                + "}\r\n"
                 + "trace(\"e\");\r\n"
+                + "break;\r\n"
                 + "}\r\n"
-                + "§§goto(addr004e);\r\n"
-                + "}\r\n"
-                + "§§goto(addr003e);\r\n"
-                + "}\r\n"
-                + "addr004e:\r\n"
                 + "trace(\"f\");\r\n",
                  false);
     }
@@ -70,30 +65,29 @@ public class ActionScript3AssembledDecompileTest extends ActionScript3DecompileT
     public void testAlwaysBreak2() {
         decompileMethod("assembled", "testAlwaysBreak2", "var v:* = 5;\r\n"
                 + "trace(\"a\");\r\n"
+                + "while(true)\r\n"
+                + "{\r\n"
                 + "if(v > 4)\r\n"
                 + "{\r\n"
                 + "trace(\"b\");\r\n"
                 + "if(v > 10)\r\n"
                 + "{\r\n"
                 + "trace(\"c\");\r\n"
+                + "break;\r\n"
                 + "}\r\n"
-                + "else\r\n"
-                + "{\r\n"
                 + "trace(\"d\");\r\n"
-                + "addr003e:\r\n"
+                + "}\r\n"
                 + "trace(\"e\");\r\n"
+                + "break;\r\n"
                 + "}\r\n"
-                + "trace(\"f\");\r\n"
-                + "return;\r\n"
-                + "}\r\n"
-                + "§§goto(addr003e);\r\n",
+                + "trace(\"f\");\r\n",
                  false);
     }
 
     @Test
     public void testCollidingPublicTraits() {
-        decompileMethod("assembled", "testCollidingPublicTraits", "trace(\"ns1 = \" + this.a#89);\r\n"
-                + "trace(\"ns2 = \" + this.a#90);\r\n",
+        decompileMethod("assembled", "testCollidingPublicTraits", "trace(\"ns1 = \" + this.a#91);\r\n"
+                + "trace(\"ns2 = \" + this.a#92);\r\n",
                  false);
     }
 
@@ -111,7 +105,7 @@ public class ActionScript3AssembledDecompileTest extends ActionScript3DecompileT
     public void testDecrementPrecedence() {
         decompileMethod("assembled", "testDecrementPrecedence", "var _loc2_:int = 10;\r\n"
                 + "var _loc1_:int = 5;\r\n"
-                + "var _loc3_:* = _loc2_ & (1 << _loc1_) - 1;\r\n",
+                + "var _loc3_:int = _loc2_ & (1 << _loc1_) - 1;\r\n",
                  false);
     }
 
@@ -168,6 +162,17 @@ public class ActionScript3AssembledDecompileTest extends ActionScript3DecompileT
     }
 
     @Test
+    public void testFindPropertyTemp() {
+        decompileMethod("assembled", "testFindPropertyTemp", "var _temp_1:* = _loc1_.target;\r\n"
+                + "_temp_1.method();\r\n"
+                + "testA = _temp_1;\r\n"
+                + "var _temp_3:* = _loc9_[_loc2_];\r\n"
+                + "testB(_temp_3,new (getDefinitionByName(\"Str_\" + _temp_3))().sub);\r\n"
+                + "_loc2_++;\r\n",
+                 false);
+    }
+
+    @Test
     public void testForEach() {
         decompileMethod("assembled", "testForEach", "var _loc5_:* = undefined;\r\n"
                 + "var _loc2_:* = 0;\r\n"
@@ -195,56 +200,66 @@ public class ActionScript3AssembledDecompileTest extends ActionScript3DecompileT
     @Test
     public void testGoto() {
         decompileMethod("assembled", "testGoto", "var v:* = 5;\r\n"
+                + "loop0:\r\n"
+                + "while(true)\r\n"
+                + "{\r\n"
+                + "while(true)\r\n"
+                + "{\r\n"
                 + "if(v > 1)\r\n"
                 + "{\r\n"
                 + "trace(\"a\");\r\n"
                 + "if(v > 2)\r\n"
                 + "{\r\n"
                 + "trace(\"goto\");\r\n"
-                + "addr0052:\r\n"
-                + "trace(\"f\");\r\n"
+                + "break;\r\n"
+                + "}\r\n"
+                + "trace(\"b\");\r\n"
                 + "}\r\n"
                 + "else\r\n"
                 + "{\r\n"
-                + "trace(\"b\");\r\n"
-                + "addr003d:\r\n"
+                + "trace(\"c\");\r\n"
+                + "}\r\n"
                 + "trace(\"d\");\r\n"
                 + "if(v > 3)\r\n"
                 + "{\r\n"
                 + "trace(\"e\");\r\n"
-                + "§§goto(addr0052);\r\n"
+                + "break;\r\n"
                 + "}\r\n"
-                + "else\r\n"
-                + "{\r\n"
                 + "trace(\"g\");\r\n"
+                + "break loop0;\r\n"
                 + "}\r\n"
+                + "trace(\"f\");\r\n"
+                + "break;\r\n"
                 + "}\r\n"
-                + "trace(\"end\");\r\n"
-                + "return;\r\n"
-                + "}\r\n"
-                + "trace(\"c\");\r\n"
-                + "§§goto(addr003d);\r\n",
+                + "trace(\"end\");\r\n",
                  false);
     }
 
     @Test
     public void testGoto2() {
         decompileMethod("assembled", "testGoto2", "var v:* = 5;\r\n"
+                + "loop0:\r\n"
+                + "while(true)\r\n"
+                + "{\r\n"
+                + "loop1:\r\n"
+                + "while(true)\r\n"
+                + "{\r\n"
+                + "while(true)\r\n"
+                + "{\r\n"
                 + "if(v > 1)\r\n"
                 + "{\r\n"
                 + "trace(\"a\");\r\n"
                 + "if(v > 2)\r\n"
                 + "{\r\n"
                 + "trace(\"goto\");\r\n"
-                + "addr0062:\r\n"
-                + "trace(\"g\");\r\n"
-                + "addr0069:\r\n"
-                + "trace(\"h\");\r\n"
+                + "break;\r\n"
+                + "}\r\n"
+                + "trace(\"b\");\r\n"
                 + "}\r\n"
                 + "else\r\n"
                 + "{\r\n"
-                + "trace(\"b\");\r\n"
-                + "addr003d:\r\n"
+                + "trace(\"c\");\r\n"
+                + "}\r\n"
                 + "trace(\"d\");\r\n"
                 + "if(v > 3)\r\n"
                 + "{\r\n"
@@ -252,20 +267,20 @@ public class ActionScript3AssembledDecompileTest extends ActionScript3DecompileT
                 + "if(b > 5)\r\n"
                 + "{\r\n"
                 + "trace(\"f\");\r\n"
-                + "§§goto(addr0062);\r\n"
+                + "break;\r\n"
                 + "}\r\n"
-                + "§§goto(addr0069);\r\n"
+                + "break loop1;\r\n"
                 + "}\r\n"
-                + "else\r\n"
-                + "{\r\n"
                 + "trace(\"i\");\r\n"
+                + "break loop0;\r\n"
                 + "}\r\n"
+                + "trace(\"g\");\r\n"
+                + "break;\r\n"
                 + "}\r\n"
-                + "trace(\"end\");\r\n"
-                + "return;\r\n"
+                + "trace(\"h\");\r\n"
+                + "break;\r\n"
                 + "}\r\n"
-                + "trace(\"c\");\r\n"
-                + "§§goto(addr003d);\r\n",
+                + "trace(\"end\");\r\n",
                  false);
     }
 
@@ -317,6 +332,15 @@ public class ActionScript3AssembledDecompileTest extends ActionScript3DecompileT
                 + "default:\r\n"
                 + "return;\r\n"
                 + "}\r\n",
+                 false);
+    }
+
+    @Test
+    public void testObfusProperty() {
+        decompileMethod("assembled", "testObfusProperty", "var a:* = new Array();\r\n"
+                + "a[0] = 5;\r\n"
+                + "§Hello world§ = 1;\r\n"
+                + "a[\"one two\"][\"three four\"] = 2;\r\n",
                  false);
     }
 
@@ -580,7 +604,6 @@ public class ActionScript3AssembledDecompileTest extends ActionScript3DecompileT
                 + "trace(\"second\");\r\n"
                 + "}\r\n"
                 + "while(_loc5_ <= 100);\r\n"
-                + "\r\n"
                 + "}\r\n"
                 + "catch(e:Error)\r\n"
                 + "{\r\n"

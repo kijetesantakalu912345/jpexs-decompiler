@@ -1,5 +1,5 @@
 # JPEXS Free Flash Decompiler
-![Build passing badge](https://github.com/jindrapetrik/jpexs-decompiler/actions/workflows/main.yml/badge.svg?branch=dev)
+![Build passing badge](https://github.com/jindrapetrik/jpexs-decompiler/actions/workflows/build.yml/badge.svg?branch=dev)
 
 Open Source Flash SWF decompiler and editor. Extract resources, convert SWF to FLA, edit ActionScript, replace images, sounds, texts and fonts. Various output formats available. Works with Java on Windows, Linux and macOS.
 
@@ -54,13 +54,7 @@ To only build, execute build task:
 ```
 ant build
 ```
-For creating EXE Installer and ZIP version, there exist Ant tasks "installer","release". These tasks require additional software installed:
-* [NSIS] (Nullsoft Scriptable Install System) (3.0b3 or newer) - creates installer
 
-You must configure installation path of this tool in tools.properties file, which could look like this for windows:
-```
-nsis.path = c:\\program files (x86)\\NSIS
-```
 ### Building libraries
 
 There are few libraries which need to be built too. These libraries are placed in "libsrc" directory.
@@ -74,6 +68,19 @@ There are few libraries which need to be built too. These libraries are placed i
 * **Swf2Exe** - Stub for "Save to EXE" feature (Delphi 7 Project)
 * **ttf** - used for TTF font export (Netbeans/Ant project)
 * **gnujpdf** - used for PDF export (Netbeans/Ant project)
+
+## Docker
+We have `Dockerfile` for headless running for not needing to install Java or FFDec locally.
+(Original script by Mahdi Lazraq)
+### Build
+```
+docker build -t ffdec .
+```
+### Usage
+FFDec CLI is the entrypoint, so you can pass arguments directly:
+```
+docker run --rm -v ./input:/work/input -v ./output:/work/output ffdec [args]
+```
 
 ## Change log
 All notable changes are listed in the file [CHANGELOG.md](CHANGELOG.md)
@@ -128,6 +135,8 @@ The application was made in Czech Republic.
 * **Rtsjx** - chinese translation
 * **koiru** - japanese translation
 * **J. Kramer** - dutch translation
+* **Andrew Poženel** - slovenian translation
+* **GitHub Copilot (Claude AI)** - german, slovak translation
 
 ## Contact
 If you want to report a problem or request new feature, use our issue tracker at [https://www.free-decompiler.com/flash/issues](https://www.free-decompiler.com/flash/issues)

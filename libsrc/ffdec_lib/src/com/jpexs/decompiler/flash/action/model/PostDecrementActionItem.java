@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -25,6 +25,7 @@ import com.jpexs.decompiler.flash.action.swf4.ActionPush;
 import com.jpexs.decompiler.flash.action.swf4.ActionSetProperty;
 import com.jpexs.decompiler.flash.action.swf4.ActionSetVariable;
 import com.jpexs.decompiler.flash.action.swf4.RegisterNumber;
+import com.jpexs.decompiler.flash.action.swf5.ActionCallMethod;
 import com.jpexs.decompiler.flash.action.swf5.ActionDecrement;
 import com.jpexs.decompiler.flash.action.swf5.ActionSetMember;
 import com.jpexs.decompiler.flash.action.swf5.ActionStoreRegister;
@@ -115,7 +116,8 @@ public class PostDecrementActionItem extends ActionItem implements SetTypeAction
     }
 
     @Override
-    public List<GraphSourceItem> toSourceIgnoreReturnValue(SourceGeneratorLocalData localData, SourceGenerator generator) throws CompilationException {
+    public List<GraphSourceItem> toSourceIgnoreReturnValue(SourceGeneratorLocalData localData, SourceGenerator generator) throws CompilationException {        
+
         ActionSourceGenerator asGenerator = (ActionSourceGenerator) generator;
         String charset = asGenerator.getCharset();
 
@@ -133,13 +135,26 @@ public class PostDecrementActionItem extends ActionItem implements SetTypeAction
             ret.addAll(gv.toSource(localData, generator));
             ret.add(new ActionDecrement());
             ret.add(new ActionSetVariable());
-        } else if (val instanceof GetMemberActionItem) {
+        } else if (val instanceof GetMemberActionItem) {            
             GetMemberActionItem mem = (GetMemberActionItem) val;
-            ret.addAll(mem.toSource(localData, generator));
-            ret.remove(ret.size() - 1); //ActionGetMember
-            ret.addAll(mem.toSource(localData, generator));
-            ret.add(new ActionDecrement());
-            ret.add(new ActionSetMember());
+            if (mem.isGetter) {
+                String memberNameAsStr = ((DirectValueActionItem) mem.memberName).getAsString();
+                ret.addAll(toSourceMerge(localData, generator,
+                    mem,
+                    new ActionDecrement(),
+                    new ActionPush((Long) (long) 1, charset),
+                    mem.object,
+                    asGenerator.pushConst("__set__" + memberNameAsStr), 
+                    new ActionCallMethod(),
+                    new ActionPop()
+                ));
+            } else {
+                ret.addAll(mem.toSource(localData, generator));
+                ret.remove(ret.size() - 1); //ActionGetMember
+                ret.addAll(mem.toSource(localData, generator));
+                ret.add(new ActionDecrement());
+                ret.add(new ActionSetMember());
+            }
         } else if ((val instanceof DirectValueActionItem) && ((DirectValueActionItem) val).value instanceof RegisterNumber) {
             RegisterNumber rn = (RegisterNumber) ((DirectValueActionItem) val).value;
             ret.add(new ActionPush(new RegisterNumber(rn.number), charset));

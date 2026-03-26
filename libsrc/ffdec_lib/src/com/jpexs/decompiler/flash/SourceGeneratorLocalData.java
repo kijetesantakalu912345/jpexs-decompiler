@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -145,6 +145,16 @@ public class SourceGeneratorLocalData implements Serializable {
      * Current protected namespace id
      */
     public int protectedNs = 0;
+    
+    /**
+     * Current static protected namespace id
+     */
+    public int staticProtectedNs = 0;
+    
+    /**
+     * Current internal namespace id
+     */
+    public int internalNs = 0;
 
     /**
      * Is in static method

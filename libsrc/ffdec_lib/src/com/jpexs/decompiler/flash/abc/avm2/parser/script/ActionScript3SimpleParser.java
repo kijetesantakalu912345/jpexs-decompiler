@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,6 +16,7 @@
  */
 package com.jpexs.decompiler.flash.abc.avm2.parser.script;
 
+import com.jpexs.decompiler.flash.SWF;
 import com.jpexs.decompiler.flash.abc.ABC;
 import com.jpexs.decompiler.flash.abc.avm2.parser.AVM2ParseException;
 import com.jpexs.decompiler.flash.simpleparser.CatchScope;
@@ -274,8 +275,13 @@ public class ActionScript3SimpleParser implements SimpleParser {
                 s = lex();
             } else {
                 s = lex();
-                if (!expected(errors, s, lexer.yyline(), SymbolGroup.IDENTIFIER, SymbolType.MULTIPLY)) {
+                if (!expected(errors, s, lexer.yyline(), SymbolGroup.IDENTIFIER, SymbolType.MULTIPLY,
+                        SymbolType.PUBLIC, SymbolType.PROTECTED, SymbolType.PRIVATE, SymbolType.INTERNAL)) {
                     break;
+                }
+                ParsedSymbol nsKeyword = null;
+                if (s.isType(SymbolType.PUBLIC, SymbolType.PROTECTED, SymbolType.PRIVATE, SymbolType.INTERNAL)) {
+                    nsKeyword = s;
                 }
                 String propName = s.value.toString(); //Can be *
                 int propPosition = s.position;
@@ -292,6 +298,9 @@ public class ActionScript3SimpleParser implements SimpleParser {
                     lastVarName = lastVarName.add(propName + "::" + s.value.toString());
                     variables.add(new Variable(false, lastVarName, s.position, null));
                 } else {
+                    if (nsKeyword != null) {
+                        errors.add(new SimpleParseException(nsKeyword.value + " not expected in this situation", lexer.yyline(), nsKeyword.position));
+                    }
                     lastVarName = lastVarName.add(propName);
                     variables.add(new Variable(false, lastVarName, propPosition, null));
                     if (s.type == SymbolType.NAMESPACESUFFIX) {
@@ -320,14 +329,22 @@ public class ActionScript3SimpleParser implements SimpleParser {
             lastName = s.value.toString();
             s = lex();
         }
-        if (!expected(errors, s, lexer.yyline(), SymbolGroup.IDENTIFIER, SymbolType.THIS, SymbolType.SUPER, SymbolType.STRING_OP)) {
+        if (!expected(errors, s, lexer.yyline(), SymbolGroup.IDENTIFIER, SymbolType.THIS, SymbolType.SUPER, SymbolType.STRING_OP,
+                SymbolType.PUBLIC, SymbolType.PROTECTED, SymbolType.PRIVATE, SymbolType.INTERNAL)) {
             return new Path();
+        }
+        ParsedSymbol nsKeyword = null;
+        if (s.isType(SymbolType.PUBLIC, SymbolType.PROTECTED, SymbolType.PRIVATE, SymbolType.INTERNAL)) {
+            nsKeyword = s;
         }
         lastName += s.value.toString();
         int identPos = s.position;
         s = lex();
         boolean attrBracket = false;
         if (s.type == SymbolType.NAMESPACESUFFIX) {
+            if (nsKeyword != null) {
+                errors.add(new SimpleParseException(nsKeyword.value + " not expected in this situation", lexer.yyline(), nsKeyword.position));
+            }
             s = lex();
             lastName += "#" + s.value;
         }
@@ -335,6 +352,9 @@ public class ActionScript3SimpleParser implements SimpleParser {
         Path fullName = new Path(lastName);
 
         while (s.isType(SymbolType.DOT)) {
+            if (nsKeyword != null) {
+                errors.add(new SimpleParseException(nsKeyword.value + " not expected in this situation", lexer.yyline(), nsKeyword.position));
+            }
             variables.add(new Variable(false, fullName, identPos));
             variables.add(new Separator(fullName, s.position));
             s = lex();
@@ -356,15 +376,24 @@ public class ActionScript3SimpleParser implements SimpleParser {
                     continue;
                 }
             } else {
-                if (!expected(errors, s, lexer.yyline(), SymbolGroup.IDENTIFIER, SymbolType.NAMESPACE, SymbolType.MULTIPLY)) {
+                if (!expected(errors, s, lexer.yyline(), SymbolGroup.IDENTIFIER, SymbolType.NAMESPACE, SymbolType.MULTIPLY,
+                        SymbolType.PUBLIC, SymbolType.PROTECTED, SymbolType.PRIVATE, SymbolType.INTERNAL
+                    )) {
                     lexer.pushback(s);
                     return new Path();
                 }
+                if (s.isType(SymbolType.PUBLIC, SymbolType.PROTECTED, SymbolType.PRIVATE, SymbolType.INTERNAL)) {
+                    nsKeyword = s;
+                }
+                
                 lastName = s.value.toString();
                 identPos = s.position;
             }
             s = lex();
             if (s.type == SymbolType.NAMESPACESUFFIX) {
+                if (nsKeyword != null) {
+                    errors.add(new SimpleParseException(nsKeyword.value + " not expected in this situation", lexer.yyline(), nsKeyword.position));
+                }
                 lastName += "#" + s.value;
                 s = lex();
             }
@@ -382,6 +411,9 @@ public class ActionScript3SimpleParser implements SimpleParser {
             }
             s = lex();
         } else {
+            if (nsKeyword != null) {
+                errors.add(new SimpleParseException(nsKeyword.value + " not expected in this situation", lexer.yyline(), nsKeyword.position));
+            }
             variables.add(new Variable(false, fullName, identPos));
         }
 
@@ -1975,12 +2007,16 @@ public class ActionScript3SimpleParser implements SimpleParser {
                         expression(errors, thisType, needsActivation, importedClasses, openedNamespaces, registerVars, inFunction, inMethod, isStatic, allowRemainder, variables, false, abc);
                         expectedType(errors, SymbolType.PARENT_CLOSE);
                     }
-                    expectedType(errors, SymbolType.COLON);
+                    if (expectedType(errors, SymbolType.COLON) == null) {
+                        break;
+                    }
                     expression(errors, thisType, needsActivation, importedClasses, openedNamespaces, registerVars, inFunction, inMethod, isStatic, allowRemainder, variables, false, abc);
 
                     s = lex();
                     if (!s.isType(SymbolType.COMMA, SymbolType.CURLY_CLOSE)) {
-                        expected(errors, s, lexer.yyline(), SymbolType.COMMA, SymbolType.CURLY_CLOSE);
+                        if (!expected(errors, s, lexer.yyline(), SymbolType.COMMA, SymbolType.CURLY_CLOSE)) {
+                            break;
+                        }
                     }
                 }
                 ret = true;
@@ -2121,6 +2157,11 @@ public class ActionScript3SimpleParser implements SimpleParser {
             case THIS:
             case SUPER:
             case ATTRIBUTE:
+            case PUBLIC:
+            case PRIVATE:
+            case PROTECTED:
+            case INTERNAL:
+            
                 lexer.pushback(s);
                 lastVarName = name(errors, thisType, needsActivation, openedNamespaces, registerVars, inFunction, inMethod, isStatic, variables, importedClasses, abc);
                 ret = true;
@@ -2340,7 +2381,11 @@ public class ActionScript3SimpleParser implements SimpleParser {
         List<VariableOrScope> vars = new ArrayList<>();
         List<DottedChain> importedClasses = new ArrayList<>();
         List<NamespaceItem> openedNamespaces = new ArrayList<>();
-        for (String name : abc.getSwf().getAbcIndex().getPackageObjects(DottedChain.TOPLEVEL)) {
+        SWF swf = abc.getSwf();
+        if (swf == null) {
+            return;
+        }
+        for (String name : swf.getAbcIndex().getPackageObjects(DottedChain.TOPLEVEL)) {
             externalTypes.add(new Path(name));
         }
         externalTypes.add(new Path("__AS3__", "vec", "Vector"));

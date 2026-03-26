@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -54,7 +54,7 @@ public class ActionClassHeaderCrippler extends SWFDecompilerAdapter {
     public void actionListParsed(ActionList actions, SWF swf) throws InterruptedException {
         FastActionList list = new FastActionList(actions);
         int ip = 0;
-        BaseLocalData ld = new ActionLocalData(null, true, new HashMap<>(), new LinkedHashSet<>());
+        BaseLocalData ld = new ActionLocalData(null, true, new HashMap<>(), new LinkedHashSet<>(), new ArrayList<>(), new ArrayList<>());
         TranslateStack stack = new TranslateStack("");
         List<GraphTargetItem> output = new ArrayList<>();
         FastActionListIterator iterator = list.iterator();

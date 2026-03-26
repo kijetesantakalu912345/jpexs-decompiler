@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS
+ *  Copyright (C) 2010-2026 JPEXS
  * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -143,16 +143,16 @@ public final class MainFrameRibbon extends AppRibbonFrame {
 
                     boolean first = true;
                     for (OpenableList swf : panel.getSwfs()) {
-                        if (!first) {
-                            sb.append(File.pathSeparator);
-                            sbt.append(File.pathSeparator);
-                        }
-                        first = false;
                         String file = swf.sourceInfo.getFile();
                         if (file != null) {
+                            if (!first) {
+                                sb.append(File.pathSeparator);
+                                sbt.append(File.pathSeparator);
+                            }
                             sb.append(file);
                             String t = swf.sourceInfo.getFileTitle();
                             sbt.append(t == null ? "" : t);
+                            first = false;                        
                         }
                     }
 

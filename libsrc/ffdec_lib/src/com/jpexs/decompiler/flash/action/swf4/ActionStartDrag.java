@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -89,7 +89,7 @@ public class ActionStartDrag extends Action {
             x1 = stack.pop();
         }
 
-        output.add(new StartDragActionItem(this, lineStartAction, target, lockCenter, constrain, x1, y1, x2, y2));
+        stack.addToOutput(new StartDragActionItem(this, lineStartAction, target, lockCenter, constrain, x1, y1, x2, y2));
     }
 
     @Override

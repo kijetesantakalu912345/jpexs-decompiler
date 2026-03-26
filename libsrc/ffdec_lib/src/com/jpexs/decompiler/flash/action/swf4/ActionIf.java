@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -191,10 +191,5 @@ public class ActionIf extends Action {
         }
         ret.add(after);
         return ret;
-    }
-
-    @Override
-    public boolean ignoredLoops() {
-        return false; //compileTime;
     }
 }

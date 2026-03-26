@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS
+ *  Copyright (C) 2010-2026 JPEXS
  * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -43,6 +43,7 @@ import com.jpexs.decompiler.flash.exporters.modes.ScriptExportMode;
 import com.jpexs.decompiler.flash.gui.AppStrings;
 import com.jpexs.decompiler.flash.gui.DebugPanel;
 import com.jpexs.decompiler.flash.gui.DebuggerHandler;
+import com.jpexs.decompiler.flash.gui.DebuggerSession;
 import com.jpexs.decompiler.flash.gui.DocsPanel;
 import com.jpexs.decompiler.flash.gui.FasterScrollPane;
 import com.jpexs.decompiler.flash.gui.GraphDialog;
@@ -336,12 +337,12 @@ public class ActionPanel extends JPanel implements SearchListener<ScriptSearchRe
             return new ActionScriptSearch().searchAs2(swf, txt, ignoreCase, regexp, pcode, new ScriptSearchListener() {
                 @Override
                 public void onDecompile(int pos, int total, String name) {
-                    Main.startWork(workText + " \"" + txt + "\", " + decAdd + " - (" + pos + "/" + total + ") " + name + "... ", worker);
+                    Main.startWork(workText + " \"" + txt + "\", " + decAdd + " - (" + pos + "/" + total + ") " + name + "... ", worker, false);
                 }
 
                 @Override
                 public void onSearch(int pos, int total, String name) {
-                    Main.startWork(workText + " \"" + txt + "\" - (" + pos + "/" + total + ") " + name + "... ", worker);
+                    Main.startWork(workText + " \"" + txt + "\" - (" + pos + "/" + total + ") " + name + "... ", worker, false);
                 }
             }, scope);
         }
@@ -603,7 +604,7 @@ public class ActionPanel extends JPanel implements SearchListener<ScriptSearchRe
 
                             @Override
                             public void status(String status) {
-                                Main.startWork(AppStrings.translate("work.decompiling") + " " + status + "  ...", that);
+                                Main.startWork(AppStrings.translate("work.decompiling") + " " + status + "  ...", that, false);
                             }                            
                         };
                         UninitializedClassFieldsDetector det = asm.getSwf().getUninitializedClassFieldsDetector();
@@ -661,7 +662,7 @@ public class ActionPanel extends JPanel implements SearchListener<ScriptSearchRe
             setSourceWorker = worker;
             if (!Main.isDebugging()) {
                 decompiledEditor.setShowMarkers(false);
-                Main.startWork(AppStrings.translate("work.decompiling") + "...", worker);
+                Main.startWork(AppStrings.translate("work.decompiling") + "...", worker, true);
             }
         } else {
             setSourceCompleted(asm, decompiledText, actions);
@@ -975,7 +976,7 @@ public class ActionPanel extends JPanel implements SearchListener<ScriptSearchRe
 
         panA.add(decLabel, BorderLayout.NORTH);
 
-        DebugPanel debugPanel = new DebugPanel();
+        DebugPanel debugPanel = new DebugPanel(false);
 
         JPanel panelWithHint = new JPanel(new BorderLayout());
         brokenHintPanel = new JPanel(new BorderLayout(10, 10));
@@ -1065,12 +1066,15 @@ public class ActionPanel extends JPanel implements SearchListener<ScriptSearchRe
         //decPanel.add(searchPanel, BorderLayout.NORTH);
         Main.getDebugHandler().addConnectionListener(new DebuggerHandler.ConnectionListener() {
             @Override
-            public void connected() {
+            public void connected(DebuggerSession session) {
                 decButtonsPan.setVisible(false);
             }
 
             @Override
-            public void disconnected() {
+            public void disconnected(DebuggerSession session) {
+                if (Main.getDebugHandler().isAnySessionConnected()) {
+                    return;
+                }
                 decButtonsPan.setVisible(true);
             }
         });
@@ -1154,6 +1158,9 @@ public class ActionPanel extends JPanel implements SearchListener<ScriptSearchRe
 
         editor.addTextChangedListener(this::editorTextChanged);
         decompiledEditor.addTextChangedListener(this::decompiledEditorTextChanged);
+        debugPanel.refresh();
+        decompiledEditor.refreshMarkers();
+        editor.refreshMarkers();
     }
 
     private void deobfuscateButtonActionPerformed(ActionEvent evt) {

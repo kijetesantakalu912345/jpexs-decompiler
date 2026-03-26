@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -85,7 +85,7 @@ public class CodeStats {
             if (stats.stackpos > ms) {
                 ms = stats.stackpos;
             }
-            writer.appendNoHilight(i + ":" + stats.stackpos + (deltastack >= 0 ? "+" + deltastack : deltastack) + "," + stats.scopepos + "    " + stats.ins.toString(writer, LocalData.create(new ArrayList<>(), null, abc, null, fullyQualifiedNames, new HashSet<>(), ScriptExportMode.AS, -1, new LinkedHashSet<>()))).newLine();
+            writer.appendNoHilight(i + ":" + stats.stackpos + (deltastack >= 0 ? "+" + deltastack : deltastack) + "," + stats.scopepos + "    " + stats.ins.toString(writer, LocalData.create(new ArrayList<>(), null, abc, null, fullyQualifiedNames, new HashSet<>(), ScriptExportMode.AS, -1, new LinkedHashSet<>(), -1))).newLine();
             i++;
         }
         return writer;

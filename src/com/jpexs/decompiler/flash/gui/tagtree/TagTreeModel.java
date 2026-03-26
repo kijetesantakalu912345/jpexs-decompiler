@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS
+ *  Copyright (C) 2010-2026 JPEXS
  * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -340,7 +340,7 @@ public class TagTreeModel extends AbstractTagTreeModel {
                     nodeList.add(new HeaderItem(swf, translate("node.header")));
                     break;
                 case "cookies":
-                    addFolderItem(nodeList, emptyFolders, addAllFolders, translate("node.cookies"), FOLDER_COOKIES, swf, cookies);
+                    addFolderItem(nodeList, emptyFolders, false, translate("node.cookies"), FOLDER_COOKIES, swf, cookies);
                     break;
                 case "shapes":
                     addFolderItem(nodeList, emptyFolders, addAllFolders, translate("node.shapes"), FOLDER_SHAPES, swf, shapes);
@@ -389,13 +389,13 @@ public class TagTreeModel extends AbstractTagTreeModel {
                     break;
                 case "scripts":
                     if (swf.isAS3()) {
-                        if (!swf.getAbcList().isEmpty()) {
+                        if (addAllFolders || !swf.getAbcList().isEmpty()) {
                             nodeList.add(new ClassesListTreeModel(swf, Configuration.flattenASPackages.get()));
                         }
                     } else {
                         List<TreeItem> subNodes = swf.getFirstLevelASMNodes(currentTagScriptCache);
 
-                        if (subNodes.size() > 0) {
+                        if (addAllFolders || !subNodes.isEmpty()) {
                             TreeItem actionScriptNode = new FolderItem(translate("node.scripts"), FOLDER_SCRIPTS, swf, subNodes);
                             nodeList.add(actionScriptNode);
                         }

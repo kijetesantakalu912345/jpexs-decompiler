@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -34,6 +34,7 @@ import com.jpexs.decompiler.flash.types.RECT;
 import com.jpexs.decompiler.flash.types.annotations.Reserved;
 import com.jpexs.decompiler.flash.types.annotations.SWFType;
 import com.jpexs.decompiler.flash.types.annotations.SWFVersion;
+import com.jpexs.decompiler.flash.types.filters.FILTER;
 import com.jpexs.helpers.ByteArrayRange;
 import com.jpexs.helpers.Cache;
 import java.io.ByteArrayOutputStream;
@@ -238,6 +239,25 @@ public class DefineButton2Tag extends ButtonTag implements ASMSourceContainer {
                     if (mat != null) {
                         r2 = mat.apply(r2);
                     }
+                    double deltaXMax = 0;
+                    double deltaYMax = 0;
+                    if (r.buttonHasFilterList && r.filterList != null && !r.filterList.isEmpty()) {
+                        for (FILTER filter : r.filterList) {
+                            if (!filter.enabled) {
+                                continue;
+                            }
+                            double x = filter.getDeltaX();
+                            double y = filter.getDeltaY();
+                            deltaXMax += x;
+                            deltaYMax += y;
+                        }
+                    }
+                    
+                    r2.Xmin -= Math.ceil(deltaXMax) * SWF.unitDivisor;
+                    r2.Ymin -= Math.ceil(deltaYMax) * SWF.unitDivisor;
+                    r2.Xmax += Math.ceil(deltaXMax) * SWF.unitDivisor;
+                    r2.Ymax += Math.ceil(deltaYMax) * SWF.unitDivisor;
+            
                     rect.Xmin = Math.min(r2.Xmin, rect.Xmin);
                     rect.Ymin = Math.min(r2.Ymin, rect.Ymin);
                     rect.Xmax = Math.max(r2.Xmax, rect.Xmax);
@@ -271,9 +291,11 @@ public class DefineButton2Tag extends ButtonTag implements ASMSourceContainer {
     @Override
     protected void initTimeline(Timeline timeline) {
         int maxDepth = 0;
+        //Note: There is frameIndex 0 everywhere, as below if frameDown is empty, it uses frameOver items
+        //I hope this won't cause problems...
         Frame frameUp = new Frame(timeline, 0);
-        Frame frameDown = new Frame(timeline, 0);
         Frame frameOver = new Frame(timeline, 0);
+        Frame frameDown = new Frame(timeline, 0);
         Frame frameHit = new Frame(timeline, 0);
         for (BUTTONRECORD r : this.characters) {
             if (swf.getCyclicCharacters().contains(r.characterId)) {
@@ -350,7 +372,7 @@ public class DefineButton2Tag extends ButtonTag implements ASMSourceContainer {
     }
 
     @Override
-    public void getNeededCharacters(Set<Integer> needed, SWF swf) {
+    public void getNeededCharacters(Set<Integer> needed, Set<String> neededClasses, SWF swf) {
         for (BUTTONRECORD rec : characters) {
             needed.add(rec.characterId);
         }

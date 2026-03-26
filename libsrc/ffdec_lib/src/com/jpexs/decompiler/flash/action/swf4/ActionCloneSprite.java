@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -77,7 +77,7 @@ public class ActionCloneSprite extends Action {
         GraphTargetItem depth = stack.pop();
         GraphTargetItem source = stack.pop();
         GraphTargetItem target = stack.pop();
-        output.add(new CloneSpriteActionItem(this, lineStartAction, source, target, depth));
+        stack.addToOutput(new CloneSpriteActionItem(this, lineStartAction, source, target, depth));
     }
 
     @Override

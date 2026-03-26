@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -50,7 +50,7 @@ import java.util.Set;
  *
  * @author JPEXS
  */
-public class FunctionActionItem extends ActionItem implements BranchStackResistant {
+public class FunctionActionItem extends ActionItem {
 
     /**
      * Decompile get/set functions
@@ -305,7 +305,7 @@ public class FunctionActionItem extends ActionItem implements BranchStackResista
         }
         writer.append(")").startBlock();
 
-        Graph.graphToString(actions, writer, localData);
+        Graph.graphToString(actions, writer, localData);        
 
         writer.endBlock();
         writer.endMethod();

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -28,13 +28,13 @@ import java.awt.geom.Rectangle2D;
  */
 public final class Matrix implements Cloneable {
 
-    public double scaleX = 1;
+    public double scaleX = 1;  //a
 
-    public double scaleY = 1;
+    public double scaleY = 1;  //d
 
-    public double rotateSkew0;
+    public double rotateSkew0; //b
 
-    public double rotateSkew1;
+    public double rotateSkew1; //c
 
     public double translateX;
 
@@ -172,7 +172,7 @@ public final class Matrix implements Cloneable {
 
     public java.awt.Point transform(java.awt.Point point) {
         Point p = transform(point.x, point.y);
-        return new java.awt.Point((int) p.x, (int) p.y);
+        return new java.awt.Point((int) Math.round(p.x), (int) Math.round(p.y));
     }
 
     public Point2D transform(Point2D point) {
@@ -303,6 +303,17 @@ public final class Matrix implements Cloneable {
         double scaleY = roundPixels400(this.scaleY / unitDivisor);
         return "matrix(" + scaleX + ", " + rotateSkew0 + ", "
                 + rotateSkew1 + ", " + scaleY + ", " + translateX + ", " + translateY + ")";
+    }
+    
+    public String getXamlTransformationString(double translateDivisor, double unitDivisor) {
+        double translateX = roundPixels400(this.translateX / translateDivisor);
+        double translateY = roundPixels400(this.translateY / translateDivisor);
+        double rotateSkew0 = roundPixels400(this.rotateSkew0 / unitDivisor);
+        double rotateSkew1 = roundPixels400(this.rotateSkew1 / unitDivisor);
+        double scaleX = roundPixels400(this.scaleX / unitDivisor);
+        double scaleY = roundPixels400(this.scaleY / unitDivisor);
+        return "" + scaleX + " " + rotateSkew0 + " "
+                + rotateSkew1 + " " + scaleY + " " + translateX + " " + translateY;
     }
 
     public static String[] parseSvgNumberList(String params) {

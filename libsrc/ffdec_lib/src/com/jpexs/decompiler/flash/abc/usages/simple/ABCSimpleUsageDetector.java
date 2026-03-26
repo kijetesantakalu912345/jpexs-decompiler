@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -540,7 +540,7 @@ public class ABCSimpleUsageDetector {
      * @return True if it is new
      */
     private boolean handleUsage(ItemKind kind, int index, String usageDescription) {
-        if (index < 0 || index > usages.get(kind).size() - 1) {
+        if (!usages.containsKey(kind) || index < 0 || index > usages.get(kind).size() - 1) {
             Logger.getLogger(ABCSimpleUsageDetector.class.getName()).log(Level.WARNING, "{0} with index {1} not found for usage {2}", new Object[]{kind, index, usageDescription});
             return false;
         }

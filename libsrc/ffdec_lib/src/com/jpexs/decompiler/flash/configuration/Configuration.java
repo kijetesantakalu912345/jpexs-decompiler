@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -839,8 +839,25 @@ public final class Configuration {
 
     @ConfigurationDefaultBoolean(false)
     @ConfigurationCategory("display")
+    @ConfigurationRemoved
     public static ConfigurationItem<Boolean> fixAntialiasConflation = null;
-
+    
+    @ConfigurationDefaultBoolean(false)
+    @ConfigurationCategory("display")
+    public static ConfigurationItem<Boolean> reduceAntialiasConflationByScalingForDisplay = null;
+        
+    @ConfigurationDefaultInt(4)
+    @ConfigurationCategory("display")
+    public static ConfigurationItem<Integer> reduceAntialiasConflationByScalingValueForDisplay = null;
+        
+    @ConfigurationDefaultBoolean(false)
+    @ConfigurationCategory("export")
+    public static ConfigurationItem<Boolean> reduceAntialiasConflationByScalingForExport = null;
+        
+    @ConfigurationDefaultInt(10)
+    @ConfigurationCategory("export")
+    public static ConfigurationItem<Integer> reduceAntialiasConflationByScalingValueForExport = null;
+    
     @ConfigurationDefaultBoolean(true)
     @ConfigurationCategory("display")
     public static ConfigurationItem<Boolean> autoPlaySounds = null;
@@ -1003,10 +1020,12 @@ public final class Configuration {
 
     @ConfigurationDefaultBoolean(false)
     @ConfigurationCategory("export")
+    @ConfigurationRemoved
     public static ConfigurationItem<Boolean> lastExportResampleWav = null;
 
     @ConfigurationDefaultBoolean(true)
     @ConfigurationCategory("display")
+    @ConfigurationRemoved
     public static ConfigurationItem<Boolean> previewResampleSound = null;
 
     @ConfigurationDefaultBoolean(false)
@@ -1165,6 +1184,30 @@ public final class Configuration {
     @ConfigurationDefaultBoolean(true)
     @ConfigurationCategory("ui")
     public static ConfigurationItem<Boolean> allowDragAndDropFromResourcesTree = null;
+    
+    @ConfigurationDefaultDouble(2.0)
+    @ConfigurationCategory("export")
+    public static ConfigurationItem<Double> lastExportMorphDuration = null;
+    
+    @ConfigurationDefaultInt(10)
+    @ConfigurationCategory("export")
+    public static ConfigurationItem<Integer> lastExportMorphNumberOfFrames = null;
+    
+    @ConfigurationDefaultBoolean(true)
+    @ConfigurationCategory("ui")
+    public static ConfigurationItem<Boolean> showDebugListenInfo = null;
+    
+    @ConfigurationDefaultBoolean(false)
+    @ConfigurationCategory("script")
+    public static ConfigurationItem<Boolean> as3QNameObfuscatedPropsInSquareBrackets = null;
+    
+    @ConfigurationDefaultBoolean(false)
+    @ConfigurationCategory("ui")
+    public static ConfigurationItem<Boolean> sortDebugVariablesAlphabetically = null;
+    
+    @ConfigurationDefaultBoolean(true)
+    @ConfigurationCategory("export")
+    public static ConfigurationItem<Boolean> svgExportGaussianBlur = null;
     
     private static Map<String, String> configurationDescriptions = new LinkedHashMap<>();
     private static Map<String, String> configurationTitles = new LinkedHashMap<>();
@@ -1818,5 +1861,20 @@ public final class Configuration {
         }
 
         return null;
+    }
+    
+    public static int calculateRealAaScale(int imageWidth, int imageHeight, double zoom, int initialAaScale) {
+        
+        final int MAX_IMAGE_DIMENSION = 10000;
+        
+        int aaScale = initialAaScale;
+        while (
+                aaScale > 1 
+                && (((long) imageWidth * zoom * aaScale / SWF.unitDivisor) > MAX_IMAGE_DIMENSION 
+                || ((long) imageHeight * zoom * aaScale / SWF.unitDivisor) > MAX_IMAGE_DIMENSION)
+        ) {
+            aaScale--;
+        }
+        return aaScale;
     }
 }

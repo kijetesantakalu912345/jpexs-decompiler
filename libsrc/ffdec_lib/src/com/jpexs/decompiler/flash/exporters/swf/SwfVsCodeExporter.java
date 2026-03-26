@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -411,7 +411,7 @@ public class SwfVsCodeExporter {
         libsDir.mkdirs();
 
         boolean parallel = Configuration.parallelSpeedUp.get();
-        ScriptExportSettings scriptExportSettings = new ScriptExportSettings(ScriptExportMode.AS, false, false, true, false, false, "/_assets/", Configuration.linkAllClasses.get(), false);
+        ScriptExportSettings scriptExportSettings = new ScriptExportSettings(ScriptExportMode.AS, false, false, true, false, "/_assets/", Configuration.linkAllClasses.get(), false);
         swf.exportActionScript(handler, srcDir.getAbsolutePath(), scriptExportSettings, parallel, eventListener);
     }
 }

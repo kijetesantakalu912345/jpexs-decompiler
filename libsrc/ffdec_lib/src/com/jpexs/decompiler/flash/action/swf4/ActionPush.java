@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -534,6 +534,7 @@ public class ActionPush extends Action {
                     }
                     if (dvt.computedRegValue instanceof TemporaryRegister) {
                         ((TemporaryRegister) dvt.computedRegValue).used = true;
+                        stack.finishBlock(output);
                         for (int i = 0; i < output.size(); i++) {
                             if (output.get(i) instanceof TemporaryRegisterMark) {
                                 TemporaryRegisterMark trm = (TemporaryRegisterMark) output.get(i);
@@ -543,6 +544,7 @@ public class ActionPush extends Action {
                                 }
                             }
                         }
+                        stack.moveToStack(output);
                         toPush = new TemporaryRegister(((RegisterNumber) o).number, ((TemporaryRegister) dvt.computedRegValue).value);
                     } else {
                         toPush = dvt;

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -120,7 +120,7 @@ public class SetLocalAVM2Item extends AVM2Item implements SetTypeAVM2Item, Assig
         /*if (declaration != null && !declaration.type.equals(TypeItem.UNBOUNDED) && (value instanceof ConvertAVM2Item)) {
             return value.value.toString(writer, localData);
         }*/
-        return SetTypeIns.handleNumberToInt(value, type).toString(writer, localData);
+        return SetTypeIns.handleSetCoerce(value, type).toString(writer, localData);
     }
 
     @Override

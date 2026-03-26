@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -88,17 +88,15 @@ public class ScriptExportSettings implements Cloneable {
      * @param ignoreFrameScripts Ignore frame scripts
      * @param exportEmbed Export embed
      * @param exportEmbedFlaMode Export embed fla mode
-     * @param resampleWav Resample WAV
      */
     public ScriptExportSettings(
             ScriptExportMode mode,
             boolean singleFile,
             boolean ignoreFrameScripts,
             boolean exportEmbed,
-            boolean exportEmbedFlaMode,
-            boolean resampleWav
+            boolean exportEmbedFlaMode
     ) {
-        this(mode, singleFile, ignoreFrameScripts, exportEmbed, exportEmbedFlaMode, resampleWav, "/_assets/", false, false);
+        this(mode, singleFile, ignoreFrameScripts, exportEmbed, exportEmbedFlaMode, "/_assets/", false, false);
     }
 
     public ScriptExportSettings(
@@ -107,7 +105,6 @@ public class ScriptExportSettings implements Cloneable {
             boolean ignoreFrameScripts,
             boolean exportEmbed,
             boolean exportEmbedFlaMode,
-            boolean resampleWav,
             String assetsDir,
             boolean includeAllClasses,
             boolean ignoreAccessibility
@@ -117,7 +114,6 @@ public class ScriptExportSettings implements Cloneable {
         this.ignoreFrameScripts = ignoreFrameScripts;
         this.exportEmbed = exportEmbed;
         this.exportEmbedFlaMode = exportEmbedFlaMode;
-        this.resampleWav = resampleWav;
         this.assetsDir = assetsDir;
         this.includeAllClasses = includeAllClasses;
         this.ignoreAccessibility = ignoreAccessibility;

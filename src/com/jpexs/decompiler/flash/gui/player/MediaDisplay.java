@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS
+ *  Copyright (C) 2010-2026 JPEXS
  * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -42,8 +42,6 @@ public interface MediaDisplay extends Closeable {
     public boolean isPlaying();
 
     public void setLoop(boolean loop);
-
-    public void setResample(boolean resample);
 
     public void gotoFrame(int frame);
 

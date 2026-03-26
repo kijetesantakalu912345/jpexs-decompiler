@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -70,6 +70,7 @@ import com.jpexs.decompiler.graph.TranslateStack;
 import com.jpexs.decompiler.graph.model.BinaryOpItem;
 import com.jpexs.decompiler.graph.model.BreakItem;
 import com.jpexs.decompiler.graph.model.CommentItem;
+import com.jpexs.decompiler.graph.model.DoWhileItem;
 import com.jpexs.decompiler.graph.model.GotoItem;
 import com.jpexs.decompiler.graph.model.IfItem;
 import com.jpexs.decompiler.graph.model.LabelItem;
@@ -80,6 +81,7 @@ import com.jpexs.decompiler.graph.model.SetTemporaryItem;
 import com.jpexs.decompiler.graph.model.SwitchItem;
 import com.jpexs.decompiler.graph.model.TemporaryItem;
 import com.jpexs.decompiler.graph.model.TrueItem;
+import com.jpexs.decompiler.graph.model.UniversalLoopItem;
 import com.jpexs.decompiler.graph.model.WhileItem;
 import com.jpexs.helpers.Helper;
 import com.jpexs.helpers.LinkedIdentityHashSet;
@@ -91,6 +93,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * ActionScript 1/2 graph
@@ -108,7 +112,7 @@ public class ActionGraph extends Graph {
      * Inside function
      */
     private boolean insideFunction;
-    
+
     /**
      * Needs uninitialized class fields detection
      */
@@ -119,11 +123,12 @@ public class ActionGraph extends Graph {
      * trait
      */
     private Map<String, Map<String, Trait>> uninitializedClassTraits;
-    
+
     /**
      * Constructs ActionGraph
      *
-     * @param needsUninitializedClassFieldsDetection Needs uninitialized class fields detection 
+     * @param needsUninitializedClassFieldsDetection Needs uninitialized class
+     * fields detection
      * @param uninitializedClassTraits Uninitialized class traits
      * @param path Path
      * @param insideDoInitAction Inside DoInitAction
@@ -147,8 +152,7 @@ public class ActionGraph extends Graph {
     public boolean doesNeedUninitializedClassFieldsDetection() {
         return needsUninitializedClassFieldsDetection;
     }
-        
-          
+
     /**
      * Get uninitialized class traits
      *
@@ -168,7 +172,7 @@ public class ActionGraph extends Graph {
     public ActionGraphSource getGraphCode() {
         return (ActionGraphSource) code;
     }
-    
+
     @Override
     public LinkedHashMap<String, Graph> getSubGraphs() {
         LinkedHashMap<String, Graph> subgraphs = new LinkedHashMap<>();
@@ -229,7 +233,8 @@ public class ActionGraph extends Graph {
      * Translates via Graph - decompiles.
      *
      * @param usedDeobfuscations Used deobfuscations
-     * @param needsUninitializedClassFieldsDetection Needs uninitialized class fields detection 
+     * @param needsUninitializedClassFieldsDetection Needs uninitialized class
+     * fields detection
      * @param uninitializedClassTraits Uninitialized class traits
      * @param secondPassData Second pass data
      * @param insideDoInitAction Inside DoInitAction
@@ -245,13 +250,13 @@ public class ActionGraph extends Graph {
      * @return List of graph target items
      * @throws InterruptedException On interrupt
      */
-    public static List<GraphTargetItem> translateViaGraph(Set<String> usedDeobfuscations, boolean needsUninitializedClassFieldsDetection, Map<String, Map<String, Trait>> uninitializedClassTraits, SecondPassData secondPassData, boolean insideDoInitAction, boolean insideFunction, HashMap<Integer, String> registerNames, HashMap<String, GraphTargetItem> variables, HashMap<String, GraphTargetItem> functions, List<Action> code, int version, int staticOperation, String path, String charset, int startIp) throws InterruptedException {        
+    public static List<GraphTargetItem> translateViaGraph(Set<String> usedDeobfuscations, boolean needsUninitializedClassFieldsDetection, Map<String, Map<String, Trait>> uninitializedClassTraits, SecondPassData secondPassData, boolean insideDoInitAction, boolean insideFunction, HashMap<Integer, String> registerNames, HashMap<String, GraphTargetItem> variables, HashMap<String, GraphTargetItem> functions, List<Action> code, int version, int staticOperation, String path, String charset, int startIp) throws InterruptedException {
         ActionGraph g = new ActionGraph(needsUninitializedClassFieldsDetection, uninitializedClassTraits, path, insideDoInitAction, insideFunction, code, registerNames, variables, functions, version, charset, startIp);
-        ActionLocalData localData = new ActionLocalData(secondPassData, insideDoInitAction, registerNames, uninitializedClassTraits, usedDeobfuscations);
+        ActionLocalData localData = new ActionLocalData(secondPassData, insideDoInitAction, registerNames, uninitializedClassTraits, usedDeobfuscations, new ArrayList<>(), new ArrayList<>());
         g.init(localData);
         return g.translate(localData, staticOperation, path);
     }
-    
+
     /**
      * Final process stack. Override this method to provide custom behavior.
      *
@@ -261,17 +266,6 @@ public class ActionGraph extends Graph {
      */
     @Override
     public void finalProcessStack(TranslateStack stack, List<GraphTargetItem> output, String path) {
-        if (stack.size() > 0) {
-            for (int i = stack.size() - 1; i >= 0; i--) {
-                //System.err.println(stack.get(i));
-                if (stack.get(i) instanceof FunctionActionItem) {
-                    FunctionActionItem f = (FunctionActionItem) stack.remove(i);
-                    if (!output.contains(f)) {
-                        output.add(0, f);
-                    }
-                }
-            }
-        }
     }
 
     /**
@@ -300,11 +294,9 @@ public class ActionGraph extends Graph {
         return !isSwitch;
     }
 
-    
-    
     @Override
     protected void finalProcess(GraphTargetItem parent, List<GraphTargetItem> list, int level, FinalProcessLocalData localData, String path) throws InterruptedException {
-                               
+
         if (level == 0) {
             List<GraphTargetItem> removed = new ArrayList<>();
             for (int i = list.size() - 1; i >= 0; i--) {
@@ -318,8 +310,8 @@ public class ActionGraph extends Graph {
                 }
             }
             list.addAll(0, removed);
-        }                
-             
+        }
+
         int targetStart;
         int targetEnd;
         GraphTargetItem targetStartItem = null;
@@ -342,6 +334,10 @@ public class ActionGraph extends Graph {
                             t--;
                             continue;
                         }
+                    }
+
+                    if (pi.value instanceof FunctionActionItem) {
+                        list.set(t, pi.value);
                     }
                 }
                 if (it instanceof SetTemporaryItem) {
@@ -546,7 +542,7 @@ public class ActionGraph extends Graph {
 
                     if ((sti.getValue() instanceof DirectValueActionItem) && (((DirectValueActionItem) sti.getValue()).value instanceof RegisterNumber)) {
                         if ((comparisonOp.rightSide instanceof DirectValueActionItem) && (((DirectValueActionItem) comparisonOp.rightSide).value instanceof Null)) {
-                            if (comparisonOp.leftSide.value instanceof EnumeratedValueActionItem) {
+                            if (comparisonOp.leftSide.value.getThroughDuplicate() instanceof EnumeratedValueActionItem) {
                                 if (((StoreRegisterActionItem) comparisonOp.leftSide).register.number == ((RegisterNumber) (((DirectValueActionItem) sti.getValue()).value)).number) {
                                     list.remove(t);
                                     checkedBody.remove(0);
@@ -559,6 +555,20 @@ public class ActionGraph extends Graph {
                                     //sti.getObject()
                                     list.remove(t - 1);
                                     t--;
+
+                                    if (comparisonOp.leftSide.value instanceof TemporaryItem) {
+                                        TemporaryItem ti = (TemporaryItem) comparisonOp.leftSide.value;
+                                        if (t > 0) {
+                                            if (list.get(t - 1) instanceof SetTemporaryItem) {
+                                                SetTemporaryItem sti2 = (SetTemporaryItem) list.get(t - 1);
+                                                if (sti2.tempIndex == ti.tempIndex) {
+                                                    list.remove(t - 1);
+                                                    t--;
+                                                }
+                                            }
+                                        }
+                                    }
+
                                     continue;
                                 }
                             }
@@ -587,6 +597,18 @@ public class ActionGraph extends Graph {
                 }
             }
         }
+
+        for (int t = 0; t < list.size(); t++) {
+            GraphTargetItem it = list.get(t);
+            if (it instanceof PushItem) {
+                it = it.value;
+            }
+            if (it instanceof EnumeratedValueActionItem) {
+                list.remove(t);
+                t--;
+            }
+        }
+
         //Handle for loops at the end:
         super.finalProcess(parent, list, level, localData, path);
 
@@ -664,7 +686,7 @@ public class ActionGraph extends Graph {
             }
         }
         ActionLocalData ald = (ActionLocalData) localData;
-        
+
         makeDefineRegistersUp(ret, new HashSet<>(ald.regNames.keySet()));
         return ret;
     }
@@ -719,14 +741,14 @@ public class ActionGraph extends Graph {
                         if (item instanceof StoreRegisterActionItem) {
                             StoreRegisterActionItem sr = (StoreRegisterActionItem) item;
                             sr.define = !definedRegisters.contains(sr.register.number);
-                            definedRegisters.add(sr.register.number);                            
+                            definedRegisters.add(sr.register.number);
                             if (sr.define && sr != ti) {
                                 list.add(ri.getVal(), new StoreRegisterActionItem(null, null, sr.register, new DirectValueActionItem(Undefined.INSTANCE), true));
-                                sr.define = false;  
+                                sr.define = false;
                                 ri.setVal(ri.getVal() + 1);
                             }
                         }
-                        
+
                         if (item instanceof FunctionActionItem) {
                             return false;
                         }
@@ -736,13 +758,13 @@ public class ActionGraph extends Graph {
                     return true;
                 }
             };
-            
+
             if (ti instanceof StoreRegisterActionItem) {
                 StoreRegisterActionItem sr = (StoreRegisterActionItem) ti;
                 sr.define = !definedRegisters.contains(sr.register.number);
                 definedRegisters.add(sr.register.number);
             }
-            
+
             ti.visitNoBlock(visitor);
             //visitor.visit(ti);
             //ti.visitRecursively(visitor);
@@ -752,16 +774,15 @@ public class ActionGraph extends Graph {
                 for (List<GraphTargetItem> items : b.getSubs()) {
                     makeDefineRegistersUp(items, definedRegisters);
                 }
-                
-                
+
                 for (List<GraphTargetItem> items : b.getSubs()) {
                     for (int j = 0; j < items.size(); j++) {
-                        GraphTargetItem item  = items.get(j);
+                        GraphTargetItem item = items.get(j);
                         if (item instanceof StoreRegisterActionItem) {
                             StoreRegisterActionItem sr = (StoreRegisterActionItem) item;
                             if (sr.define) {
                                 list.add(ri.getVal(), new StoreRegisterActionItem(null, null, sr.register, new DirectValueActionItem(Undefined.INSTANCE), true));
-                                sr.define = false;  
+                                sr.define = false;
                                 if ((sr.value instanceof DirectValueActionItem) && (((DirectValueActionItem) sr.value).value == Undefined.INSTANCE)) {
                                     items.remove(j);
                                     j--;
@@ -795,6 +816,7 @@ public class ActionGraph extends Graph {
     /**
      * Check before decompiling next section.
      *
+     * @param hasEmptyStackPops Has empty stack pops
      * @param currentRet Current return
      * @param foundGotos Found gotos
      * @param partCodes Part codes
@@ -819,7 +841,7 @@ public class ActionGraph extends Graph {
      * @throws InterruptedException On interrupt
      */
     @Override
-    protected List<GraphTargetItem> check(List<GraphTargetItem> currentRet, List<GotoItem> foundGotos, Map<GraphPart, List<GraphTargetItem>> partCodes, Map<GraphPart, Integer> partCodePos, Set<GraphPart> visited, GraphSource code, BaseLocalData localData, Set<GraphPart> allParts, TranslateStack stack, GraphPart parent, GraphPart part, List<GraphPart> stopPart, List<StopPartKind> stopPartKind, List<Loop> loops, List<ThrowState> throwStates, List<GraphTargetItem> output, Loop currentLoop, int staticOperation, String path) throws InterruptedException {
+    protected List<GraphTargetItem> check(Reference<Boolean> hasEmptyStackPops, List<GraphTargetItem> currentRet, List<GotoItem> foundGotos, Map<GraphPart, List<GraphTargetItem>> partCodes, Map<GraphPart, Integer> partCodePos, Set<GraphPart> visited, GraphSource code, BaseLocalData localData, Set<GraphPart> allParts, TranslateStack stack, GraphPart parent, GraphPart part, List<GraphPart> stopPart, List<StopPartKind> stopPartKind, List<Loop> loops, List<ThrowState> throwStates, List<GraphTargetItem> output, Loop currentLoop, int staticOperation, String path) throws InterruptedException {
         if (!output.isEmpty()) {
             if (output.get(output.size() - 1) instanceof StoreRegisterActionItem) {
                 StoreRegisterActionItem str = (StoreRegisterActionItem) output.get(output.size() - 1);
@@ -908,7 +930,7 @@ public class ActionGraph extends Graph {
                 Reference<GraphPart> nextRef = new Reference<>(null);
                 Reference<GraphTargetItem> tiRef = new Reference<>(null);
                 makeAllCommands(output, stack);
-                SwitchItem sw = handleSwitch(switchedObject, switchStartItem, foundGotos, partCodes, partCodePos, visited, allParts, stack, stopPart, stopPartKind, loops, throwStates, localData, staticOperation, path, caseValuesMap, defaultPart, caseBodyParts, nextRef, tiRef);
+                SwitchItem sw = handleSwitch(switchedObject, switchStartItem, foundGotos, partCodes, partCodePos, visited, allParts, stack, stopPart, stopPartKind, loops, throwStates, localData, staticOperation, path, caseValuesMap, defaultPart, caseBodyParts, nextRef, tiRef, hasEmptyStackPops);
                 fixSwitchEnd(sw);
                 ret = new ArrayList<>();
                 ret.addAll(output);
@@ -917,14 +939,14 @@ public class ActionGraph extends Graph {
                     if (tiRef.getVal() != null) {
                         ret.add(tiRef.getVal());
                     } else {
-                        ret.addAll(printGraph(foundGotos, partCodes, partCodePos, visited, localData, stack, allParts, null, nextRef.getVal(), stopPart, stopPartKind, loops, throwStates, staticOperation, path));
+                        ret.addAll(printGraph(hasEmptyStackPops, foundGotos, partCodes, partCodePos, visited, localData, stack, allParts, null, nextRef.getVal(), stopPart, stopPartKind, loops, throwStates, staticOperation, path));
                     }
                 }
             }
         }
         return ret;
     }
-    
+
     private int ipAfterJumps(int nip) {
         while (nip < code.size() && code.get(nip) instanceof ActionJump) {
             ActionJump j = (ActionJump) code.get(nip);
@@ -932,11 +954,11 @@ public class ActionGraph extends Graph {
             if (nip2 == nip) {
                 break;
             }
-            nip = nip2;            
+            nip = nip2;
         }
         return nip;
     }
-            
+
     /**
      * Checks IP and allows to modify it.
      *
@@ -945,13 +967,13 @@ public class ActionGraph extends Graph {
      */
     @Override
     protected int checkIp(int ip) {
-        
+
         if (ip >= code.size()) {
             return ip;
         }
-        
-        int oldIp = ip;        
-        
+
+        int oldIp = ip;
+
         //return/break in for..in
         /*
         We need to skip following:
@@ -963,7 +985,7 @@ public class ActionGraph extends Graph {
         ...
         
         Beware: There can be obfuscation jumps anywhere on the path!
-        */
+         */
         GraphSourceItem action = code.get(ip);
         if ((action instanceof ActionPush) && (((ActionPush) action).values.size() == 1) && (((ActionPush) action).values.get(0) == Null.INSTANCE)) {
             int nip = ip;
@@ -978,7 +1000,7 @@ public class ActionGraph extends Graph {
                         nip = ipAfterJumps(nip);
                         if (nip < code.size() && code.get(nip) instanceof ActionIf) {
                             ActionIf aif = (ActionIf) code.get(nip);
-                            
+
                             int jip = code.adr2pos(aif.getTargetAddress());
                             jip = ipAfterJumps(jip);
                             if (jip == ip) {
@@ -987,9 +1009,9 @@ public class ActionGraph extends Graph {
                             }
                         }
                     }
-                }                                    
+                }
             }
-            
+
             //The simple approach is not working, there may be jumps inside
             /*
             if (ip + 3 <= code.size()) {
@@ -1005,7 +1027,7 @@ public class ActionGraph extends Graph {
                     }
                 }
             }
-            */
+             */
         }
         if (oldIp != ip) {
             if (ip == code.size()) { //no next checkIp call since its after code size
@@ -1016,25 +1038,15 @@ public class ActionGraph extends Graph {
         return ip;
     }
 
-    /**
-     * Prepares second pass data. Can return null when no second pass will
-     * happen.
-     *
-     * @param list List of GraphTargetItems
-     * @return Second pass data or null
-     */
     @Override
-    public SecondPassData prepareSecondPass(List<GraphTargetItem> list) {
+    public SecondPassData prepareSecondPass(BaseLocalData localData, List<Loop> loops, List<ThrowState> throwStates, List<GraphTargetItem> list) {
         ActionSecondPassData spd = new ActionSecondPassData();
         Set<GraphPart> processedIfs = new HashSet<>();
-        checkSecondPassSwitches(processedIfs, list, spd.switchParts, spd.switchOnFalseParts, spd.switchCaseExpressions);
-
-        if (spd.switchParts.isEmpty()) {
-            return null; //no need to second pass
-        }
+        checkSecondPassSwitches(localData, loops, throwStates, spd.switchCases, spd.switchBreaks, processedIfs, list, spd.switchParts, spd.switchOnFalseParts, spd.switchCaseExpressions);
+        
         return spd;
     }
-    
+
     private GraphTargetItem getFirstListItem(List<GraphTargetItem> list) {
         int i = 0;
         while (i < list.size()) {
@@ -1045,19 +1057,36 @@ public class ActionGraph extends Graph {
             }
             return item;
         }
-        return null;        
+        return null;
     }
 
     /**
      * Checks second pass switches.
      *
+     * @param allSwitchCases SwitchCases
      * @param processedIfs Processed ifs
      * @param list List of GraphTargetItems
      * @param allSwitchParts All switch parts
      * @param allSwitchOnFalseParts All switch on false parts
      * @param allSwitchExpressions All switch expressions
      */
-    private void checkSecondPassSwitches(Set<GraphPart> processedIfs, List<GraphTargetItem> list, List<List<GraphPart>> allSwitchParts, List<List<GraphPart>> allSwitchOnFalseParts, List<List<GraphTargetItem>> allSwitchExpressions) {
+    private void checkSecondPassSwitches(BaseLocalData localData, List<Loop> loops, List<ThrowState> throwStates, List<List<GraphPart>> allSwitchCases, List<GraphPart> allSwitchBreaks, Set<GraphPart> processedIfs, List<GraphTargetItem> list, List<List<GraphPart>> allSwitchParts, List<List<GraphPart>> allSwitchOnFalseParts, List<List<GraphTargetItem>> allSwitchExpressions) {
+        for (int i = 0; i < list.size(); i++) {
+            GraphTargetItem item = list.get(i);
+            if (item instanceof DoWhileItem) {
+                DoWhileItem dw = (DoWhileItem) item;
+                UniversalLoopItem uni = new UniversalLoopItem(dialect, null, null, dw.loop, dw.commands);
+
+                GraphTargetItem expr = dw.expression.remove(dw.expression.size() - 1);
+                dw.commands.addAll(dw.expression);
+
+                IfItem ifi = new IfItem(dialect, null, null, expr.invert(expr.getSrc()), new ArrayList<>(), new ArrayList<>());
+                ifi.onTrue.add(new BreakItem(dialect, null, null, uni.loop.id));
+                ifi.decisionPart = new GraphPart(Integer.MAX_VALUE, processedIfs.size()); //hack
+                uni.commands.add(ifi);
+                list.set(i, uni);
+            }
+        }
         for (GraphTargetItem item : list) {
             if (item instanceof IfItem) {
                 IfItem ii = (IfItem) item;
@@ -1069,6 +1098,7 @@ public class ActionGraph extends Graph {
                         List<GraphPart> switchParts = new ArrayList<>();
                         List<GraphTargetItem> switchExpressions = new ArrayList<>();
                         List<GraphPart> switchOnFalseParts = new ArrayList<>();
+                        List<GraphPart> switchCases = new ArrayList<>();
                         BinaryOpItem sneq = (BinaryOpItem) ii.expression;
                         if (true) {
                             /*(sneq.leftSide instanceof StoreRegisterActionItem)
@@ -1088,6 +1118,7 @@ public class ActionGraph extends Graph {
                             switchParts.add(ii.decisionPart);
                             switchExpressions.add(sneq.rightSide);
                             switchOnFalseParts.add(ii.onTruePart);
+                            switchCases.add(isNeq ? ii.onTruePart : ii.onFalsePart); //the expression is inverted when creating ifItem
 
                             IfItem ii2 = ii;
                             IfItem lastOkayIi = ii;
@@ -1108,6 +1139,7 @@ public class ActionGraph extends Graph {
                                                     switchParts.add(ii2.decisionPart);
                                                     switchOnFalseParts.add(ii2.onTruePart);
                                                     switchExpressions.add(sneq.rightSide);
+                                                    switchCases.add(isNeq ? ii2.onTruePart : ii2.onFalsePart); //the expression is inverted when creating ifItem
                                                     lastOkayIi = ii2;
                                                 } else {
                                                     break;
@@ -1122,6 +1154,7 @@ public class ActionGraph extends Graph {
                                                 switchParts.add(ii2.decisionPart);
                                                 switchOnFalseParts.add(ii2.onTruePart);
                                                 switchExpressions.add(sneq.rightSide);
+                                                switchCases.add(isNeq ? ii2.onTruePart : ii2.onFalsePart); //the expression is inverted when creating ifItem
                                                 lastOkayIi = ii2;
                                             } else {
                                                 break;
@@ -1141,6 +1174,13 @@ public class ActionGraph extends Graph {
                                 allSwitchParts.add(switchParts);
                                 allSwitchOnFalseParts.add(switchOnFalseParts);
                                 allSwitchExpressions.add(switchExpressions);
+                                allSwitchCases.add(switchCases);                                
+                                try {
+                                    allSwitchBreaks.add(getMostCommonPart(localData, switchCases, loops, throwStates, new ArrayList<>()));
+                                } catch (InterruptedException ex) {
+                                    allSwitchBreaks.add(null);
+                                    return;
+                                }
                             }
                         }
                     }
@@ -1148,7 +1188,7 @@ public class ActionGraph extends Graph {
             }
             if ((item instanceof Block)) {
                 for (List<GraphTargetItem> sub : ((Block) item).getSubs()) {
-                    checkSecondPassSwitches(processedIfs, sub, allSwitchParts, allSwitchOnFalseParts, allSwitchExpressions);
+                    checkSecondPassSwitches(localData, loops, throwStates, allSwitchCases, allSwitchBreaks, processedIfs, sub, allSwitchParts, allSwitchOnFalseParts, allSwitchExpressions);
                 }
             }
         }

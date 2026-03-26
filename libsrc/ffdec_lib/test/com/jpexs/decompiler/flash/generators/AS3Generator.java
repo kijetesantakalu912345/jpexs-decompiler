@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -66,7 +66,7 @@ public class AS3Generator {
             sortedPacks.put(pack.getClassPath().toRawString(), pack);
         }
         s.append("/*\r\n"
-                + " *  Copyright (C) 2010-2025 JPEXS, All rights reserved.\r\n"
+                + " *  Copyright (C) 2010-2026 JPEXS, All rights reserved.\r\n"
                 + " * \r\n"
                 + " * This library is free software; you can redistribute it and/or\r\n"
                 + " * modify it under the terms of the GNU Lesser General Public\r\n"
@@ -166,7 +166,7 @@ public class AS3Generator {
                             callStack.add(b);
                             Set<String> usedDeobfuscations = new LinkedHashSet<>();
                             b.convert(swf.version, callStack, swf.getAbcIndex(), new ConvertData(), "", ScriptExportMode.AS, false, ((TraitMethodGetterSetter) t).method_info, pack.scriptIndex, classId, abc, null, new ScopeStack(), 0, new NulWriter(), new ArrayList<>(), abc.instance_info.get(classId).instance_traits, true, new HashSet<>(), new ArrayList<>(), usedDeobfuscations);
-                            b.toString(usedDeobfuscations, swf.version, callStack, swf.getAbcIndex(), "", ScriptExportMode.AS, abc, null, src, new ArrayList<>(), new HashSet<>());
+                            b.toString(usedDeobfuscations, swf.version, callStack, swf.getAbcIndex(), "", ScriptExportMode.AS, abc, null, src, new ArrayList<>(), new HashSet<>(), -1);
                             src.finishHilights();
                             String[] srcs = src.toString().split("[\r\n]+");
                             for (int i = 0; i < srcs.length; i++) {
@@ -195,6 +195,8 @@ public class AS3Generator {
     public static void main(String[] args) throws Exception {
         Configuration.autoDeobfuscate.set(false);
         Configuration.showMethodBodyId.set(false);
+        Configuration.autoDeobfuscateIdentifiers.set(false);
+        Configuration.as3QNameObfuscatedPropsInSquareBrackets.set(true);
         Configuration.simplifyExpressions.set(false);
         Configuration.displayDupInstructions.set(true);
 

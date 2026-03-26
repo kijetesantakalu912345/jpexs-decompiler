@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,10 +20,10 @@ import com.jpexs.decompiler.graph.GraphPart;
 import com.jpexs.decompiler.graph.GraphSourceItem;
 import com.jpexs.decompiler.graph.SecondPassData;
 import com.jpexs.helpers.Reference;
+import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.Map;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -36,12 +36,7 @@ public abstract class BaseLocalData {
     /**
      * Line start instruction
      */
-    public GraphSourceItem lineStartInstruction;
-
-    /**
-     * Set of all switch parts
-     */
-    public Set<GraphPart> allSwitchParts = new HashSet<>();
+    public GraphSourceItem lineStartInstruction;   
 
     /**
      * Second pass data
@@ -62,6 +57,21 @@ public abstract class BaseLocalData {
      * Max temp index
      */
     public Reference<Integer> maxTempIndex = new Reference<>(0);
+    
+    /**
+     * Whether goto statements were used
+     */
+    public Reference<Boolean> gotosUsed = new Reference<>(false);   
+
+    /**
+     * Switch cases
+     */
+    public List<List<GraphPart>> switchCases = new ArrayList<>();
+    
+    /**
+     * Switch breaks
+     */
+    public List<GraphPart> switchBreaks = new ArrayList<>();
     
     /**
      * Constructor.

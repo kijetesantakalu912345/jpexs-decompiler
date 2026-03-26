@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -132,7 +132,7 @@ public class LINESTYLE2 implements NeedsCharacters, Serializable, ILINESTYLE {
     /**
      * Miter limit factor
      */
-    @SWFType(BasicType.FIXED8)
+    @SWFType(BasicType.UFIXED8)
     @Conditional(value = "joinStyle", options = {MITER_JOIN})
     public float miterLimitFactor;
 
@@ -149,9 +149,9 @@ public class LINESTYLE2 implements NeedsCharacters, Serializable, ILINESTYLE {
     public FILLSTYLE fillType;
 
     @Override
-    public void getNeededCharacters(Set<Integer> needed, SWF swf) {
+    public void getNeededCharacters(Set<Integer> needed, Set<String> neededClasses, SWF swf) {
         if (hasFillFlag) {
-            fillType.getNeededCharacters(needed, swf);
+            fillType.getNeededCharacters(needed, neededClasses, swf);
         }
     }
 

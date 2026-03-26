@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -65,7 +65,7 @@ public class DROPSHADOWFILTER extends FILTER {
     /**
      * Strength of the drop shadow
      */
-    @SWFType(BasicType.FIXED8)
+    @SWFType(BasicType.UFIXED8)
     public float strength = 1f;
 
     /**
@@ -113,7 +113,7 @@ public class DROPSHADOWFILTER extends FILTER {
 
     @Override
     public String toSvg(Document document, Element filtersElement, SVGExporter exporter, String in) {
-        return dropShadowSvg(distance, angle, dropShadowColor, innerShadow, knockout, compositeSource, blurX, blurY, strength, passes, document, filtersElement, exporter, in);
+        return SvgFiltering.dropShadow(distance, angle, dropShadowColor, innerShadow, knockout, compositeSource, blurX, blurY, strength, passes, document, filtersElement, exporter, in);
     }
 
     @Override
@@ -173,6 +173,5 @@ public class DROPSHADOWFILTER extends FILTER {
         }
         return Objects.equals(this.dropShadowColor, other.dropShadowColor);
     }
-    
-    
+
 }

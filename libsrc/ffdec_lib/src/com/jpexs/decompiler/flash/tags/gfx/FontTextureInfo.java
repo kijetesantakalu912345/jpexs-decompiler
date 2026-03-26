@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -49,7 +49,7 @@ public class FontTextureInfo extends Tag {
 
     public int textureFormat;
 
-    public String fileName;
+    public String fileName = "";
 
     public int textureWidth;
 
@@ -59,9 +59,9 @@ public class FontTextureInfo extends Tag {
 
     public int nominalGlyphSz;
 
-    public TEXGLYPH[] texGlyphs;
+    public TEXGLYPH[] texGlyphs = new TEXGLYPH[0];
 
-    public FONTINFO[] fonts;
+    public FONTINFO[] fonts = new FONTINFO[0];
 
     /**
      * Gets data bytes
@@ -142,15 +142,15 @@ public class FontTextureInfo extends Tag {
     @Override
     public Map<String, String> getNameProperties() {
         Map<String, String> ret = super.getNameProperties();
-        ret.put("chid", "" + getUniqueId());
+        ret.put("tid", "" + getUniqueId());
         return ret;
     }
 
     @Override
     public String getUniqueId() {
-        if (idType == IdType.IDTYPE_NONE) {
+        /*if (idType == IdType.IDTYPE_NONE) {
             return super.getUniqueId();
-        }
+        }*/
         return "ft" + textureID;
     }
 

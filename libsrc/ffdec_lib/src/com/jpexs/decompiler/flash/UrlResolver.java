@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,6 +16,8 @@
  */
 package com.jpexs.decompiler.flash;
 
+import java.util.Stack;
+
 /**
  * URL resolver interface.
  *
@@ -31,4 +33,12 @@ public interface UrlResolver {
      * @return SWF object or null if not valid
      */
     public SWF resolveUrl(String basePath, String url);
+            
+    /**
+     * Check whether to ignore this url
+     * @param basePath Base SWF path
+     * @param url URL    
+     * @return True on ignore
+     */
+    public boolean doIgnoreUrl(String basePath, String url);
 }

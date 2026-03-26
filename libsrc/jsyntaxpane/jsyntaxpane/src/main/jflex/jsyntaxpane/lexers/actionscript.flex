@@ -135,8 +135,7 @@ Preprocessor = \u00A7\u00A7 {Identifier}
 
 NamespaceSuffix = "#" {DecIntegerLiteral}
 
-// why is regex here if it doesn't exist in actionscript_script.flex? did somebody forget to remove this?
-RegExp = \/([^\r\n/]|\\\/)+\/[a-z]*
+RegExp = \/([^\r\n/\\]|\\.)+\/[a-z]*
 
 %state STRING, CHARLITERAL, XMLSTARTTAG, XML, OIDENTIFIER, ADOC, ADOC_TAG
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -26,6 +26,7 @@ import com.jpexs.decompiler.flash.action.model.CompoundableBinaryOpAs12;
 import com.jpexs.decompiler.flash.action.model.ConstantPool;
 import com.jpexs.decompiler.flash.action.model.DecrementActionItem;
 import com.jpexs.decompiler.flash.action.model.DirectValueActionItem;
+import com.jpexs.decompiler.flash.action.model.EvalActionItem;
 import com.jpexs.decompiler.flash.action.model.GetVariableActionItem;
 import com.jpexs.decompiler.flash.action.model.IncrementActionItem;
 import com.jpexs.decompiler.flash.action.model.PostDecrementActionItem;
@@ -43,6 +44,7 @@ import com.jpexs.decompiler.graph.GraphTargetItem;
 import com.jpexs.decompiler.graph.SecondPassData;
 import com.jpexs.decompiler.graph.TranslateStack;
 import com.jpexs.decompiler.graph.model.CompoundableBinaryOp;
+import com.jpexs.decompiler.graph.model.DuplicateItem;
 import com.jpexs.decompiler.graph.model.LocalData;
 import com.jpexs.helpers.utf8.Utf8Helper;
 import java.util.HashMap;
@@ -121,8 +123,16 @@ public class ActionSetVariable extends Action implements StoreTypeAction {
                     if (((IncrementActionItem) value).object instanceof GetVariableActionItem) {
                         ((GetVariableActionItem) ((IncrementActionItem) value).object).printObfuscatedName = true;
                     }
-                    output.add(new PostIncrementActionItem(this, lineStartAction, ((IncrementActionItem) value).object));
+                    stack.addToOutput(new PostIncrementActionItem(this, lineStartAction, ((IncrementActionItem) value).object));
                     return;
+                }
+            }
+            if (((IncrementActionItem) value).object instanceof EvalActionItem) {
+                if (((IncrementActionItem) value).object.value instanceof DuplicateItem) {
+                    if (((IncrementActionItem) value).object.value.value == name) {                        
+                        stack.addToOutput(new PostIncrementActionItem(this, lineStartAction, new GetVariableActionItem(null, null, name)));
+                        return;
+                    }
                 }
             }
         }
@@ -132,8 +142,16 @@ public class ActionSetVariable extends Action implements StoreTypeAction {
                     if (((DecrementActionItem) value).object instanceof GetVariableActionItem) {
                         ((GetVariableActionItem) ((DecrementActionItem) value).object).printObfuscatedName = true;
                     }
-                    output.add(new PostDecrementActionItem(this, lineStartAction, ((DecrementActionItem) value).object));
+                    stack.addToOutput(new PostDecrementActionItem(this, lineStartAction, ((DecrementActionItem) value).object));
                     return;
+                }
+            }
+            if (((DecrementActionItem) value).object instanceof EvalActionItem) {
+                if (((DecrementActionItem) value).object.value instanceof DuplicateItem) {
+                    if (((DecrementActionItem) value).object.value.value == name) {                        
+                        stack.addToOutput(new PostDecrementActionItem(this, lineStartAction, new GetVariableActionItem(null, null, name)));
+                        return;
+                    }
                 }
             }
         }
@@ -154,6 +172,13 @@ public class ActionSetVariable extends Action implements StoreTypeAction {
                         setVar.setCompoundValue(binaryOp.getRightSide());
                         setVar.setCompoundOperator(binaryOp.getOperator());
                     }
+                } else if (
+                        binaryOp.getLeftSide() instanceof EvalActionItem
+                        && binaryOp.getLeftSide().value instanceof DuplicateItem
+                        && binaryOp.getLeftSide().value.value == name
+                ) {
+                    setVar.setCompoundValue(binaryOp.getRightSide());
+                    setVar.setCompoundOperator(binaryOp.getOperator());
                 }
             }
         }
@@ -184,12 +209,12 @@ public class ActionSetVariable extends Action implements StoreTypeAction {
 
                 TemporaryRegister tr = new TemporaryRegister(sr.register.number, ret);
                 variables.put("__register" + sr.register.number, tr);
-                output.add(new TemporaryRegisterMark(tr));
+                stack.addToOutput(new TemporaryRegisterMark(tr));
                 return;
             }
         }
 
-        output.add(ret);
+        stack.addToOutput(ret);
     }
 
     @Override

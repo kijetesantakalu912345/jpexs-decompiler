@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -47,7 +47,7 @@ public class ActionScript2ClassesTest extends ActionScript2TestBase {
         Configuration.simplifyExpressions.set(false);
         Configuration.decompile.set(true);
         Configuration.registerNameFormat.set("_loc%d_");
-        Configuration.skipDetectionOfUninitializedClassFields.set(false);        
+        Configuration.skipDetectionOfUninitializedClassFields.set(false);
         swf = new SWF(new BufferedInputStream(new FileInputStream("testdata/as2/as2.swf")), false);
     }
 
@@ -232,6 +232,25 @@ public class ActionScript2ClassesTest extends ActionScript2TestBase {
                 + "      }\n"
                 + "      trace(\"B\");\n"
                 + "      return 5;\n"
+                + "   }");
+    }
+
+    @Test
+    public void testUnpopped() {
+        compareSrc("TestUnpopped", "var a;\n"
+                + "   var c = true;\n"
+                + "   function TestUnpopped()\n"
+                + "   {\n"
+                + "      \n"
+                + "   }\n"
+                + "   function run()\n"
+                + "   {\n"
+                + "      this.a; //unpopped\n"
+                + "      trace(\"b\");\n"
+                + "      if(this.c)\n"
+                + "      {\n"
+                + "         trace(\"c\");\n"
+                + "      }\n"
                 + "   }");
     }
 }

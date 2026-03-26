@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -58,6 +58,15 @@ public interface GraphSourceItem extends Serializable, Cloneable {
     public int getStackPushCount(BaseLocalData localData, TranslateStack stack);
 
     /**
+     * Gets stack delta. Stack push count - stack pop count.
+     *
+     * @param localData Local data
+     * @param stack Stack
+     * @return Stack delta
+     */
+    public int getStackDelta(BaseLocalData localData, TranslateStack stack);
+    
+    /**
      * Gets file offset.
      *
      * @return File offset
@@ -98,13 +107,6 @@ public interface GraphSourceItem extends Serializable, Cloneable {
      * @return Line offset
      */
     public long getLineOffset();
-
-    /**
-     * Checks whether the loops are ignored. FIXME: What is this, how to use it?
-     *
-     * @return True if the loops are ignored, false otherwise
-     */
-    public boolean ignoredLoops();
 
     /**
      * Gets branches

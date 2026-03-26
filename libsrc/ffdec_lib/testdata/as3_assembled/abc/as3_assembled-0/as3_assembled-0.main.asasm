@@ -43,5 +43,7 @@ program
  #include "tests/TestConstructDynamically.script.asasm"
  #include "tests/TestCollidingPublicTraits.script.asasm"
  #include "tests/TestSetGetLocalOnStack.script.asasm"
+ #include "tests/TestFindPropertyTemp.script.asasm"
+ #include "tests/TestObfusProperty.script.asasm"
  ; place to add next
 end ; program

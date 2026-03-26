@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -651,7 +651,7 @@ public class AS3ScriptExporter {
                     return ret;
                 }
                 SoundExporter se = new SoundExporter();
-                se.exportSounds(handler, ASSETS_DIR, rttl, new SoundExportSettings(SoundExportMode.MP3_WAV, exportSettings.resampleWav), evl);
+                se.exportSounds(handler, ASSETS_DIR, rttl, new SoundExportSettings(SoundExportMode.MP3_WAV), evl);
                 if (CancellableWorker.isInterrupted()) {
                     return ret;
                 }
@@ -672,7 +672,7 @@ public class AS3ScriptExporter {
                             ByteArrayOutputStream baos = new ByteArrayOutputStream();
                             SWFOutputStream sos2 = new SWFOutputStream(baos, swf.version, swf.getCharset());
                             sos2.writeRECT(swf.displayRect);
-                            sos2.writeFIXED8(swf.frameRate);
+                            sos2.writeUFIXED8(swf.frameRate);
                             sos2.writeUI16(1);
                             FileAttributesTag fa = swf.getFileAttributes();
                             if (fa != null) {
@@ -684,12 +684,16 @@ public class AS3ScriptExporter {
                             }
 
                             Set<Integer> neededCharacters = new LinkedHashSet<>();
+                            Set<String> neededCharacterClasses = new LinkedHashSet<>();
                             List<Integer> symbolClassIds = new ArrayList<>();
                             List<String> symbolClassNames = new ArrayList<>();
                             for (CharacterTag st : assetsTagList) {
-                                st.getNeededCharactersDeep(neededCharacters);
+                                st.getNeededCharactersDeep(neededCharacters, neededCharacterClasses);
                                 neededCharacters.add(swf.getCharacterId(st));
                             }
+                            
+                            //TODO: handle neededCharacterClasses?
+                            
                             for (int n : neededCharacters) {
                                 CharacterTag ct = (CharacterTag) swf.getCharacter(n);
                                 if (ct == null) {

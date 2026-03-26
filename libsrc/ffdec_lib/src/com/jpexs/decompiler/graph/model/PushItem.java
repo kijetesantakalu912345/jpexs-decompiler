@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -33,6 +33,8 @@ import java.util.Objects;
  */
 public class PushItem extends GraphTargetItem {
 
+    public boolean asComment = false;
+    
     /**
      * Constructor.
      * @param value Value to push
@@ -43,13 +45,16 @@ public class PushItem extends GraphTargetItem {
 
     @Override
     public GraphTextWriter appendTo(GraphTextWriter writer, LocalData localData) throws InterruptedException {
-        //Logger.getLogger(PushItem.class.getName()).log(Level.WARNING, "Push item left in the source code");
+        if (asComment) {
+            value.appendTry(writer, localData);
+            return writer;
+        }
         writer.append("§§push(");
         value.appendTry(writer, localData);
         writer.append(")");
         return writer;
-    }
-
+    }  
+    
     @Override
     public boolean hasReturnValue() {
         return false;

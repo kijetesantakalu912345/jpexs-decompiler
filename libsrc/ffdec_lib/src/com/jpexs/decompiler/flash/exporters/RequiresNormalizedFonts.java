@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,6 +18,7 @@ package com.jpexs.decompiler.flash.exporters;
 
 import com.jpexs.decompiler.flash.tags.base.FontTag;
 import com.jpexs.decompiler.flash.tags.base.StaticTextTag;
+import com.jpexs.decompiler.flash.tags.base.TextTag;
 import java.util.Map;
 
 /**
@@ -26,10 +27,10 @@ import java.util.Map;
  * @author JPEXS
  */
 public interface RequiresNormalizedFonts {
-    public void setNormalizedFonts(Map<Integer, FontTag> normalizedFonts, Map<Integer, StaticTextTag> normalizedTexts);
+    public void setNormalizedFonts(Map<Integer, FontTag> normalizedFonts, Map<Integer, TextTag> normalizedTexts);
     
     public Map<Integer, FontTag> getNormalizedFonts();
     
-    public Map<Integer, StaticTextTag> getNormalizedTexts();
+    public Map<Integer, TextTag> getNormalizedTexts();
     
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2022-2025 JPEXS
+ *  Copyright (C) 2022-2026 JPEXS
  * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -197,16 +197,16 @@ public class BreakpointListDialog extends AppDialog {
         defaultTableModel.addColumn(translate("breakpoint.line"));
         defaultTableModel.addColumn(translate("breakpoint.status"));
 
-        Map<String, Set<Integer>> breakpoints = Main.getDebugHandler().getAllBreakPoints(swf, false);
+        Map<String, Set<Integer>> breakpoints = Main.getDebugHandler().getAllSessionsBreakPoints(swf);
 
         List<Breakpoint> newBreakpointList = new ArrayList<>();
         for (String scriptName : breakpoints.keySet()) {
             for (int line : breakpoints.get(scriptName)) {
                 newBreakpointList.add(new Breakpoint(scriptName, line));
                 String status = "unknown";
-                if (Main.getDebugHandler().isBreakpointInvalid(swf, scriptName, line)) {
+                if (Main.getCurrentDebugSession().isBreakpointInvalid(swf, scriptName, line)) {
                     status = "invalid";
-                } else if (Main.getDebugHandler().isBreakpointConfirmed(swf, scriptName, line)) {
+                } else if (Main.getCurrentDebugSession().isBreakpointConfirmed(swf, scriptName, line)) {
                     status = "confirmed";
                 }
                 defaultTableModel.addRow(new Object[]{scriptName, line, translate("breakpoint.status." + status)});

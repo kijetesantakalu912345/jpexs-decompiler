@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -109,9 +109,6 @@ public class CallAVM2Item extends AVM2Item {
         if (callable instanceof UnresolvedAVM2Item) {
             callable = ((UnresolvedAVM2Item) callable).resolved;
         }
-        if (callable instanceof ImportedSlotConstItem) {
-            callable = ((ImportedSlotConstItem) callable).type;
-        }
         if (callable instanceof NameAVM2Item) {
             NameAVM2Item n = (NameAVM2Item) callable;
             if (!localData.registerVars.containsKey(n.getVariableName())) {
@@ -139,7 +136,7 @@ public class CallAVM2Item extends AVM2Item {
                     nobj.setRegNumber(0);
                     obj = nobj;
                 }*/
-                PropertyAVM2Item p = new PropertyAVM2Item(obj, n.isAttribute(), n.getVariableName(), n.getNamespaceSuffix(), g.abcIndex, n.openedNamespaces, new ArrayList<>(), false);
+                PropertyAVM2Item p = new PropertyAVM2Item(obj, n.isAttribute(), n.getVariableName(), n.getNamespaceSuffix(), g.abcIndex, n.openedNamespaces, new ArrayList<>(), false, null, line);
                 p.setAssignedValue(n.getAssignedValue());
                 callable = p;
             }
@@ -150,6 +147,13 @@ public class CallAVM2Item extends AVM2Item {
             TypeItem t = (TypeItem) callable;
             propIndex = AVM2SourceGenerator.resolveType(localData, t, ((AVM2SourceGenerator) generator).abcIndex);
         }
+        
+        if (callable instanceof ScriptPropertyAVM2Item) {
+            TypeItem t = ((ScriptPropertyAVM2Item) callable).type;
+            propIndex = AVM2SourceGenerator.resolveType(localData, t, ((AVM2SourceGenerator) generator).abcIndex);;
+        }
+        
+        
         Object obj = null;
 
         if (callable instanceof PropertyAVM2Item) {
@@ -216,6 +220,13 @@ public class CallAVM2Item extends AVM2Item {
             propIndex = prop.resolveProperty(localData);
         }
 
+        if (callable instanceof TypeItem && propIndex != -1 && arguments.size() == 1) {
+            AVM2Instruction ins = NameAVM2Item.generateCoerce(localData, generator, callable);            
+            if (ins != null) {
+                return toSourceMerge(localData, generator, arguments, ins);
+            }
+        }
+        
         if (propIndex != -1) {
             if (obj == null) {
                 obj = new AVM2Instruction(0, AVM2Instructions.FindPropertyStrict, new int[]{propIndex});

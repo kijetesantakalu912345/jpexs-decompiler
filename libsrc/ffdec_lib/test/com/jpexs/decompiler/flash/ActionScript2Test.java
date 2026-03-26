@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -48,6 +48,7 @@ public class ActionScript2Test extends ActionScript2TestBase {
         Configuration.decompile.set(true);
         Configuration.registerNameFormat.set("_loc%d_");
         Configuration.autoRenameIdentifiers.set(false);
+        Configuration.skipDetectionOfUninitializedClassFields.set(false);
         swf = new SWF(new BufferedInputStream(new FileInputStream("testdata/as2/as2.swf")), false);
     }
 
@@ -2606,6 +2607,79 @@ public class ActionScript2Test extends ActionScript2TestBase {
                 + "return false;\r\n"
                 + "}\r\n"
                 + "trace(\"breakDetectionTest\");\r\n"
+        );
+    }
+
+    @Test
+    public void frame96_doWhileTwiceTest() {
+        compareSrc(96, "trace(\"doWhileTwiceTest\");\r\n"
+                + "var a = 1;\r\n"
+                + "var b = 2;\r\n"
+                + "while(true)\r\n"
+                + "{\r\n"
+                + "while(true)\r\n"
+                + "{\r\n"
+                + "if(a)\r\n"
+                + "{\r\n"
+                + "trace(\"x\");\r\n"
+                + "if(b)\r\n"
+                + "{\r\n"
+                + "break;\r\n"
+                + "}\r\n"
+                + "trace(\"y\");\r\n"
+                + "}\r\n"
+                + "trace(\"z\");\r\n"
+                + "if(false)\r\n"
+                + "{\r\n"
+                + "break;\r\n"
+                + "}\r\n"
+                + "}\r\n"
+                + "trace(\"g\");\r\n"
+                + "if(b)\r\n"
+                + "{\r\n"
+                + "break;\r\n"
+                + "}\r\n"
+                + "trace(\"h\");\r\n"
+                + "if(false)\r\n"
+                + "{\r\n"
+                + "break;\r\n"
+                + "}\r\n"
+                + "}\r\n"
+                + "trace(\"finish\");\r\n"
+        );
+    }
+
+    @Test
+    public void frame97_twoInTest() {
+        compareSrc(97, "trace(\"twoInTest\");\r\n"
+                + "var o = {a:{}};\r\n"
+                + "for(var n in o)\r\n"
+                + "{\r\n"
+                + "var c = 5;\r\n"
+                + "for(var i in o.a)\r\n"
+                + "{\r\n"
+                + "if(i == c)\r\n"
+                + "{\r\n"
+                + "if(i == 0)\r\n"
+                + "{\r\n"
+                + "trace(\"xx\");\r\n"
+                + "break;\r\n"
+                + "}\r\n"
+                + "}\r\n"
+                + "}\r\n"
+                + "}\r\n"
+        );
+    }
+
+    @Test
+    public void frame98_andIntTest() {
+        compareSrc(98, "trace(\"andIntTest\");\r\n"
+                + "var a = 1;\r\n"
+                + "var b = 5;\r\n"
+                + "if(0 && (1 || a < b))\r\n"
+                + "{\r\n"
+                + "trace(\"okay\");\r\n"
+                + "}\r\n"
         );
     }
     //--FRAMES-END--

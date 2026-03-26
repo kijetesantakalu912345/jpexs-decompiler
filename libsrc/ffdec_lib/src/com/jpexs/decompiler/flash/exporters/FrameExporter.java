@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -27,6 +27,7 @@ import com.jpexs.decompiler.flash.configuration.Configuration;
 import com.jpexs.decompiler.flash.exporters.commonshape.ExportRectangle;
 import com.jpexs.decompiler.flash.exporters.commonshape.Matrix;
 import com.jpexs.decompiler.flash.exporters.commonshape.SVGExporter;
+import com.jpexs.decompiler.flash.exporters.modes.ButtonExportMode;
 import com.jpexs.decompiler.flash.exporters.modes.FontExportMode;
 import com.jpexs.decompiler.flash.exporters.modes.FrameExportMode;
 import com.jpexs.decompiler.flash.exporters.settings.ButtonExportSettings;
@@ -38,10 +39,12 @@ import com.jpexs.decompiler.flash.helpers.ImageHelper;
 import com.jpexs.decompiler.flash.tags.DefineSpriteTag;
 import com.jpexs.decompiler.flash.tags.SetBackgroundColorTag;
 import com.jpexs.decompiler.flash.tags.Tag;
+import com.jpexs.decompiler.flash.tags.base.ButtonTag;
 import com.jpexs.decompiler.flash.tags.base.CharacterTag;
+import com.jpexs.decompiler.flash.tags.base.DrawableTag;
 import com.jpexs.decompiler.flash.tags.base.FontTag;
 import com.jpexs.decompiler.flash.tags.base.RenderContext;
-import com.jpexs.decompiler.flash.tags.base.StaticTextTag;
+import com.jpexs.decompiler.flash.tags.base.TextTag;
 import com.jpexs.decompiler.flash.tags.enums.ImageFormat;
 import com.jpexs.decompiler.flash.timeline.DepthState;
 import com.jpexs.decompiler.flash.timeline.Frame;
@@ -65,7 +68,11 @@ import com.jpexs.helpers.Helper;
 import com.jpexs.helpers.Path;
 import com.jpexs.helpers.SerializableImage;
 import com.jpexs.helpers.utf8.Utf8Helper;
+import com.jpexs.images.apng.AnimatedPngEncoder;
+import com.jpexs.images.apng.data.AnimatedPngData;
+import com.jpexs.images.apng.data.AnimationFrameData;
 import dev.matrixlab.webp4j.WebPCodec;
+import dev.matrixlab.webp4j.gif.GifToWebPConfig;
 import gnu.jpdf.PDFGraphics;
 import gnu.jpdf.PDFJob;
 import java.awt.AlphaComposite;
@@ -102,6 +109,7 @@ import net.kroo.elliot.GifSequenceWriter;
 import net.weiner.kevin.AnimatedGifEncoder;
 import org.monte.media.VideoFormatKeys;
 import org.monte.media.avi.AVIWriter;
+import org.w3c.dom.Element;
 
 /**
  * Frame exporter.
@@ -124,6 +132,9 @@ public class FrameExporter {
             case SVG:
                 fem = FrameExportMode.SVG;
                 break;
+            case SVG_COMBINED:
+                fem = FrameExportMode.SVG;
+                break;
             case WEBP:
                 fem = FrameExportMode.WEBP;
                 break;
@@ -134,13 +145,16 @@ public class FrameExporter {
                 throw new Error("Unsupported button export mode: " + settings.mode);
         }
 
-        if (frames == null) {
+        /*if (frames == null) {
             frames = new ArrayList<>();
-            frames.add(0); // todo: export all frames
-        }
+            frames.add(ButtonTag.FRAME_UP);
+            frames.add(ButtonTag.FRAME_OVER);
+            frames.add(ButtonTag.FRAME_DOWN);
+            frames.add(ButtonTag.FRAME_HITTEST);
+        }*/
 
-        FrameExportSettings fes = new FrameExportSettings(fem, settings.zoom, true);
-        return exportFrames(handler, outdir, swf, containerId, frames, 1, fes, evl);
+        FrameExportSettings fes = new FrameExportSettings(fem, settings.zoom, true, settings.aaScale);
+        return exportFrames(handler, outdir, swf, containerId, frames, 1, fes, evl, true, settings.mode == ButtonExportMode.SVG_COMBINED);
     }
 
     public List<File> exportSpriteFrames(AbortRetryIgnoreHandler handler, String outdir, SWF swf, int containerId, List<Integer> frames, int subframesLength, SpriteExportSettings settings, EventListener evl) throws IOException, InterruptedException {
@@ -148,6 +162,9 @@ public class FrameExporter {
         switch (settings.mode) {
             case PNG:
                 fem = FrameExportMode.PNG;
+                break;
+            case APNG:
+                fem = FrameExportMode.APNG;
                 break;
             case GIF:
                 fem = FrameExportMode.GIF;
@@ -170,6 +187,9 @@ public class FrameExporter {
             case WEBP:
                 fem = FrameExportMode.WEBP;
                 break;
+            case WEBP_ANIMATED:
+                fem = FrameExportMode.WEBP_ANIMATED;
+                break;
             case SWF:
                 fem = FrameExportMode.SWF;
                 break;
@@ -177,7 +197,7 @@ public class FrameExporter {
                 throw new Error("Unsupported sprite export mode");
         }
 
-        FrameExportSettings fes = new FrameExportSettings(fem, settings.zoom, true);
+        FrameExportSettings fes = new FrameExportSettings(fem, settings.zoom, true, settings.aaScale);
         return exportFrames(handler, outdir, swf, containerId, frames, subframesLength, fes, evl);
     }
 
@@ -247,7 +267,9 @@ public class FrameExporter {
             int max = subFrameMode ? subframeLength : fframes.size();
 
             int fframe = subFrameMode ? fframes.get(0) : fframes.get(pos++);
-            BufferedImage result = SWF.frameToImageGet(tim, fframe, subFrameMode ? pos++ : 0, null, 0, tim.displayRect, new Matrix(), null, backgroundColor == null && !usesTransparency ? Color.white : backgroundColor, settings.zoom, true).getBufferedImage();
+            RECT displayRect = tim.getDisplayRectWithFilters();
+            int realAaScale = Configuration.calculateRealAaScale(displayRect.getWidth(), displayRect.getHeight(), settings.zoom, settings.aaScale);
+            BufferedImage result = SWF.frameToImageGet(tim, fframe, subFrameMode ? pos++ : 0, null, 0, displayRect, new Matrix(), null, backgroundColor == null && !usesTransparency ? Color.white : backgroundColor, settings.zoom, true, realAaScale).getBufferedImage();
             if (CancellableWorker.isInterrupted()) {
                 return null;
             }
@@ -259,7 +281,32 @@ public class FrameExporter {
         }
     }
 
+    private String getFrameFileName(int frame, boolean button) {
+        String buttonSuffix = "";
+        if (button) {
+            switch (frame) {
+                case ButtonTag.FRAME_UP + 1:
+                    buttonSuffix = "_up";
+                    break;
+                case ButtonTag.FRAME_OVER + 1:
+                    buttonSuffix = "_over";
+                    break;
+                case ButtonTag.FRAME_DOWN + 1:
+                    buttonSuffix = "_down";
+                    break;
+                case ButtonTag.FRAME_HITTEST + 1:
+                    buttonSuffix = "_hittest";
+                    break;
+            }
+        }
+        return "" + frame + buttonSuffix;
+    }
+    
     public List<File> exportFrames(AbortRetryIgnoreHandler handler, String outdir, final SWF swf, int containerId, List<Integer> frames, int subFramesLength, final FrameExportSettings settings, final EventListener evl) throws IOException, InterruptedException {
+        return exportFrames(handler, outdir, swf, containerId, frames, subFramesLength, settings, evl, false, false);
+    }        
+    
+    private List<File> exportFrames(AbortRetryIgnoreHandler handler, String outdir, final SWF swf, int containerId, List<Integer> frames, int subFramesLength, final FrameExportSettings settings, final EventListener evl, boolean button, boolean combined) throws IOException, InterruptedException {
         final List<File> ret = new ArrayList<>();
         if (CancellableWorker.isInterrupted()) {
             return ret;
@@ -268,6 +315,7 @@ public class FrameExporter {
         if (swf.getTags().isEmpty()) {
             return ret;
         }
+        Timelined timelined;
         Timeline tim0;
         List<String> paths = new ArrayList<>();
         String subPath = "";
@@ -276,10 +324,12 @@ public class FrameExporter {
         }
 
         if (containerId == 0) {
+            timelined = swf;
             tim0 = swf.getTimeline();
             paths.add(subPath);
         } else {
-            tim0 = ((Timelined) swf.getCharacter(containerId)).getTimeline();
+            timelined = (Timelined) swf.getCharacter(containerId);
+            tim0 = timelined.getTimeline();
 
             Set<String> classNames = swf.getCharacter(containerId).getClassNames();
             if (Configuration.as3ExportNamesUseClassNamesOnly.get() && !classNames.isEmpty()) {
@@ -297,10 +347,12 @@ public class FrameExporter {
         final Timeline tim = tim0;
 
         boolean exportAll = frames == null;
-        if (frames == null) {
+                
+        if (exportAll) {
             frames = new ArrayList<>();
-            for (Frame frame : tim.getFrames()) {
-                frames.add(frame.frame);
+            List<Frame> timFrames = tim.getFrames();
+            for (int f = 0; f < timFrames.size(); f++) {
+                frames.add(f);
             }
         }
 
@@ -321,29 +373,17 @@ public class FrameExporter {
         }
 
         if (settings.mode == FrameExportMode.SVG) {
-            
+
             FontNormalizer normalizer = new FontNormalizer();
             Map<Integer, FontTag> normalizedFonts = new LinkedHashMap<>();
-            Map<Integer, StaticTextTag> normalizedTexts = new LinkedHashMap<>();
+            Map<Integer, TextTag> normalizedTexts = new LinkedHashMap<>();
             normalizer.normalizeFonts(tim.timelined.getSwf(), normalizedFonts, normalizedTexts);
-
             
-            int max = frames.size();
-            if (subFramesLength > 1) {
-                max = subFramesLength;
-            }
-            for (int i = 0; i < max; i++) {
-                if (evl != null) {
-                    Tag parentTag = tim.getParentTag();
-                    evl.handleExportingEvent("frame", i + 1, max, parentTag == null ? "" : parentTag.getName());
-                }
-
-                final int fi = i;
+            if (combined) {
                 final Color fbackgroundColor = backgroundColor;
                 for (File foutdir : foutdirs) {
                     new RetryTask(() -> {
-                        int frame = subFramesLength > 1 ? fframes.get(0) : fframes.get(fi);
-                        File f = new File(foutdir + File.separator + ((subFramesLength > 1 ? fi : fframes.get(fi)) + 1) + ".svg");
+                        File f = new File(foutdir + File.separator + "combined.svg");
                         try (OutputStream fos = new BufferedOutputStream(new FileOutputStream(f))) {
                             ExportRectangle rect = new ExportRectangle(tim.displayRect);
                             rect.xMax *= settings.zoom;
@@ -351,21 +391,56 @@ public class FrameExporter {
                             rect.xMin *= settings.zoom;
                             rect.yMin *= settings.zoom;
                             SVGExporter exporter = new SVGExporter(rect, settings.zoom, "frame", fbackgroundColor);
-                            exporter.setNormalizedFonts(normalizedFonts, normalizedTexts);
-                            tim.toSVG(frame, subFramesLength > 1 ? fi : 0, null, 0, exporter, null, 0, new Matrix(), new Matrix());
+                            exporter.setNormalizedFonts(normalizedFonts, normalizedTexts);                            
+                            //Here is not timelined.toSVG, but drawableTag.toSVG, which draws combined button
+                            ((DrawableTag) timelined).toSVG(0, 0, exporter, 0, null, 0, new Matrix(), new Matrix());
+                                
+                            
                             fos.write(Utf8Helper.getBytes(exporter.getSVG()));
                         }
                         ret.add(f);
                     }, handler).run();
                 }
-
-                if (CancellableWorker.isInterrupted()) {
-                    break;
+            } else {            
+                int max = frames.size();
+                if (subFramesLength > 1) {
+                    max = subFramesLength;
                 }
+                for (int i = 0; i < max; i++) {
+                    if (evl != null) {
+                        Tag parentTag = tim.getParentTag();
+                        evl.handleExportingEvent("frame", i + 1, max, parentTag == null ? "" : parentTag.getName());
+                    }
 
-                if (evl != null) {
-                    Tag parentTag = tim.getParentTag();
-                    evl.handleExportedEvent("frame", i + 1, max, parentTag == null ? "" : parentTag.getName());
+                    final int fi = i;
+                    final Color fbackgroundColor = backgroundColor;
+                    for (File foutdir : foutdirs) {
+                        new RetryTask(() -> {
+                            int frame = subFramesLength > 1 ? fframes.get(0) : fframes.get(fi);                        
+                            File f = new File(foutdir + File.separator + getFrameFileName(((subFramesLength > 1 ? fi : fframes.get(fi)) + 1), button) + ".svg");
+                            try (OutputStream fos = new BufferedOutputStream(new FileOutputStream(f))) {
+                                ExportRectangle rect = new ExportRectangle(tim.displayRect);
+                                rect.xMax *= settings.zoom;
+                                rect.yMax *= settings.zoom;
+                                rect.xMin *= settings.zoom;
+                                rect.yMin *= settings.zoom;
+                                SVGExporter exporter = new SVGExporter(rect, settings.zoom, "frame", fbackgroundColor);
+                                exporter.setNormalizedFonts(normalizedFonts, normalizedTexts);
+                                tim.toSVG(frame, subFramesLength > 1 ? fi : 0, null, 0, exporter, null, 0, new Matrix(), new Matrix());
+                                fos.write(Utf8Helper.getBytes(exporter.getSVG()));
+                            }
+                            ret.add(f);
+                        }, handler).run();
+                    }
+
+                    if (CancellableWorker.isInterrupted()) {
+                        break;
+                    }
+
+                    if (evl != null) {
+                        Tag parentTag = tim.getParentTag();
+                        evl.handleExportedEvent("frame", i + 1, max, parentTag == null ? "" : parentTag.getName());
+                    }
                 }
             }
 
@@ -395,8 +470,9 @@ public class FrameExporter {
                         fos.write(Utf8Helper.getBytes("\r\n"));
                         fos.write(Utf8Helper.getBytes("var scalingGrids = {};\r\nvar boundRects = {};\r\n"));
                         Set<Integer> library = new HashSet<>();
-                        ftim.getNeededCharacters(fframes, library);
-
+                        Set<String> libraryClasses = new HashSet<>();
+                        ftim.getNeededCharacters(fframes, library, libraryClasses);
+                        //FIXME!!! Handle Library Classes
                         SWF.libraryToHtmlCanvas(fswf, library, fos);
 
                         String currentName = ftim.id == 0 ? "main" : SWF.getTypePrefix(fswf.getCharacter(ftim.id)) + ftim.id;
@@ -498,7 +574,7 @@ public class FrameExporter {
 
                         try (OutputStream fos = new BufferedOutputStream(new FileOutputStream(f))) {
                             try {
-                                new PreviewExporter().exportSwf(fos, swf.getCharacter(containerId), fBackgroundColor, 0, false);
+                                new PreviewExporter().exportSwf(fos, swf.getCharacter(containerId), fBackgroundColor, 0, false, null);
                             } catch (ActionParseException ex) {
                                 Logger.getLogger(FrameExporter.class.getName()).log(Level.SEVERE, null, ex);
                             }
@@ -516,7 +592,7 @@ public class FrameExporter {
 
                             try (OutputStream fos = new BufferedOutputStream(new FileOutputStream(f))) {
                                 try {
-                                    new PreviewExporter().exportSwf(fos, fn, fBackgroundColor, 0, false);
+                                    new PreviewExporter().exportSwf(fos, fn, fBackgroundColor, 0, false, null);
                                 } catch (ActionParseException ex) {
                                     Logger.getLogger(FrameExporter.class.getName()).log(Level.SEVERE, null, ex);
                                 }
@@ -530,8 +606,8 @@ public class FrameExporter {
         }
 
         final Color fbackgroundColor = backgroundColor;
-        final boolean usesTransparency = settings.mode == FrameExportMode.PNG 
-                || settings.mode == FrameExportMode.GIF 
+        final boolean usesTransparency = settings.mode == FrameExportMode.PNG
+                || settings.mode == FrameExportMode.GIF
                 || settings.mode == FrameExportMode.WEBP;
         final MyFrameIterator frameImages = new MyFrameIterator(tim, fframes, evl, usesTransparency, backgroundColor, settings, subFramesLength);
 
@@ -546,6 +622,26 @@ public class FrameExporter {
                     }, handler).run();
                 }
                 break;
+            case WEBP_ANIMATED:
+                for (File foutdir : foutdirs) {
+                    frameImages.reset();
+                    new RetryTask(() -> {
+                        File f = new File(foutdir + File.separator + "frames.webp");
+                        makeAnimatedWebP(frameImages, swf.frameRate, f, evl);
+                        ret.add(f);
+                    }, handler).run();
+                }
+                break;
+            case APNG:
+                for (File foutdir : foutdirs) {
+                    frameImages.reset();
+                    new RetryTask(() -> {
+                        File f = new File(foutdir + File.separator + "frames.png");
+                        makeAnimatedPng(frameImages, swf.frameRate, f, evl);
+                        ret.add(f);
+                    }, handler).run();
+                }
+                break;
             case BMP:
                 for (File foutdir : foutdirs) {
                     frameImages.reset();
@@ -554,7 +650,7 @@ public class FrameExporter {
                         new RetryTask(() -> {
                             int fileNum = subFramesLength > 1 ? fi + 1 : (fframes.get(fi) + 1);
 
-                            File f = new File(foutdir + File.separator + fileNum + ".bmp");
+                            File f = new File(foutdir + File.separator + getFrameFileName(fileNum, button) + ".bmp");
                             BufferedImage img = frameImages.next();
                             if (img != null) {
                                 BMPFile.saveBitmap(img, f);
@@ -572,7 +668,7 @@ public class FrameExporter {
                         new RetryTask(() -> {
                             int fileNum = subFramesLength > 1 ? fi + 1 : (fframes.get(fi) + 1);
 
-                            File f = new File(foutdir + File.separator + fileNum + ".webp");
+                            File f = new File(foutdir + File.separator + getFrameFileName(fileNum, button) + ".webp");
                             BufferedImage img = frameImages.next();
                             if (img != null) {
                                 try (FileOutputStream fos = new FileOutputStream(f)) {
@@ -591,7 +687,7 @@ public class FrameExporter {
                         final int fi = i;
                         new RetryTask(() -> {
                             int fileNum = subFramesLength > 1 ? fi + 1 : (fframes.get(fi) + 1);
-                            File file = new File(foutdir + File.separator + fileNum + ".png");
+                            File file = new File(foutdir + File.separator + getFrameFileName(fileNum, button) + ".png");
                             BufferedImage img = frameImages.next();
                             if (img != null) {
                                 ImageHelper.write(img, ImageFormat.PNG, file);
@@ -605,12 +701,12 @@ public class FrameExporter {
                 if (frameImages.hasNext()) {
                     for (File foutdir : foutdirs) {
                         new RetryTask(() -> {
-                            
+
                             FontNormalizer normalizer = new FontNormalizer();
                             Map<Integer, FontTag> normalizedFonts = new LinkedHashMap<>();
-                            Map<Integer, StaticTextTag> normalizedTexts = new LinkedHashMap<>();
+                            Map<Integer, TextTag> normalizedTexts = new LinkedHashMap<>();
                             normalizer.normalizeFonts(tim.timelined.getSwf(), normalizedFonts, normalizedTexts);
-                            
+
                             File f = new File(foutdir + File.separator + "frames.pdf");
                             PDFJob job = new PDFJob(new BufferedOutputStream(new FileOutputStream(f)));
                             PageFormat pf = new PageFormat();
@@ -659,7 +755,7 @@ public class FrameExporter {
                                             return compositeGraphics;
                                         }
                                         final Graphics2D parentGraphics = (Graphics2D) super.getGraphics();
-                                        compositeGraphics = new DualPdfGraphics2D(parentGraphics, (PDFGraphics) g, existingFonts);                                        
+                                        compositeGraphics = new DualPdfGraphics2D(parentGraphics, (PDFGraphics) g, existingFonts);
                                         ((DualPdfGraphics2D) compositeGraphics).setNormalizedFonts(normalizedFonts, normalizedTexts);
                                         return compositeGraphics;
                                     }
@@ -686,7 +782,7 @@ public class FrameExporter {
                                 renderContext.stateUnderCursor = new ArrayList<>();
 
                                 try {
-                                    tim.toImage(fframe, subFramesLength > 1 ? pos : 0, renderContext, image, image, false, m, new Matrix(), m, null, zoom, true, new ExportRectangle(rect), new ExportRectangle(rect), m, true, Timeline.DRAW_MODE_ALL, 0, true, new ArrayList<>());
+                                    tim.toImage(fframe, subFramesLength > 1 ? pos : 0, renderContext, image, image, false, m, new Matrix(), m, null, zoom, true, new ExportRectangle(rect), new ExportRectangle(rect), m, true, Timeline.DRAW_MODE_ALL, 0, true, new ArrayList<>(), 1);
                                 } catch (Exception ex) {
                                     ex.printStackTrace();
                                 }
@@ -812,6 +908,61 @@ public class FrameExporter {
         }
 
         encoder.finish();
+    }
+
+    public static void makeAnimatedPng(Iterator<BufferedImage> images, float frameRate, File file, EventListener evl) throws IOException {
+        
+        List<AnimationFrameData> frames = new ArrayList<>();
+        
+        int delayNumerator = 1000;
+        int delayDenominator = Math.round(1000 * frameRate);
+        int width = 0;
+        int height = 0;
+        BufferedImage backupImage = null;
+        while (images.hasNext()) {
+            BufferedImage img = images.next();
+            if (img == null) {
+                break;
+            }
+            if (backupImage == null) {
+                backupImage = img;
+            }
+            width = img.getWidth();
+            height = img.getHeight();
+            frames.add(new AnimationFrameData(img, delayNumerator, delayDenominator));
+        }
+        AnimatedPngData data = new AnimatedPngData(width, height, 0, backupImage, frames);
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            AnimatedPngEncoder.encode(data, fos);
+        }
+    }
+    
+    public static void makeAnimatedWebP(Iterator<BufferedImage> images, float frameRate, File file, EventListener evl) throws IOException {
+        GifToWebPConfig config = GifToWebPConfig.createLosslessConfig();
+        List<BufferedImage> allImages = new ArrayList<>();
+        List<Integer> delays = new ArrayList<>();
+        int lastTime = 0;
+        while (images.hasNext()) {
+            BufferedImage img = images.next();
+            if (img == null) {
+                break;
+            }
+            allImages.add(img);
+            int timeAfter = (int) Math.round(allImages.size() * frameRate);
+            int delay = timeAfter - lastTime;
+            lastTime = timeAfter;
+            delays.add(delay);
+        }
+        int[] delaysInt = new int[delays.size()];
+        for (int i = 0; i < delays.size(); i++) {
+            delaysInt[i] = delays.get(i);
+        }
+
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            byte[] data = WebPCodec.createAnimatedWebP(allImages, delaysInt, config);
+            fos.write(data);
+            fos.flush();
+        }
     }
 
     public static void makeGIFOld(Iterator<BufferedImage> images, float frameRate, File file, EventListener evl) throws IOException {

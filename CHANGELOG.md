@@ -1,7 +1,179 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [25.1.3] - 2026-03-04
+### Added
+- Debugger - Button to disconnect current session (stay listening)
+- [#2644] Debugger - Button to sort variables alphabetically
+- AS3 Direct editation - Error when accessing inaccessible namespace
+- AS3 ambiguous namespace detection (back again)
+- [#2648] Dockerfile
+- SVG export - Gradient bevel filter, Gradient glow filter
+
+### Fixed
+- [#2643] APNG export - images containing multiple IDAT chunks
+- AS3 direct editation - proper use convert/coerce instruction
+- AS3 direct editation - use coerce_f for float values
+- [#2645] Windows MSI installer - Cannot change install directory
+- Long delay before switching critical status bar titles
+  (Causing many actions to look slow - for example Debug listening)
+- AS3 goto definition missing some namespaces
+- [#2514] AS3 direct editation - problems with namespaces
+- [#2649] SVG export - blur scaling (on supported browsers)
+- [#2651] Loop breaks detection
+- [#2653] Check for WEBP availability in CLI
+
+### Changed
+- Icon of Debug listen action from ear to phone receiver
+- [#2649] SVG export - using gaussian blur instead of box blur with convolution matrix
+  (Can be turned off in the settings)
+
+## [25.1.2] - 2026-02-23
+### Added
+- Debugger - Debugged SWF file name in the session title
+- Debugger - Remove watch
+- Debugger - List of watches
+- Debugger - Show flag of watch type (read/write)
+
+### Fixed
+- [#2639] Export to FLA - missing sound streams
+- Debugger - Threading issues with multiple SWFs
+- Debugger - Reading variables on 64bit flash players (like in browsers)
+- DoInitAction should be ignored when exporting as SWF
+
+### Changed
+- [#2642] Sprite SWF export - do not export as SWF timeline, use DefineSprite tag
+  and PlaceObject of it
+
+### Removed
+- (Temporary) AS3 ambiguous namespace detection, it is slow - needs optimizations
+
+## [25.1.1] - 2026-02-19
+### Fixed
+- [#2636] ActionScript - Incorrect always-break detection causing insertion of while(true)
+- [#2636] ActionScript 3 - Incorrect switch detection
+- AS3 property resolving for KIND_NAMESPACE (like builtin for Strings, etc.)
+- [#2636] ActionScript - switches vs loop breaks
+- [#2636] ActionScript 3 - type coercion / convert, local registers type propagation
+- Using public/private/protected/internal keywords on ambiguous namespace references
+  and compiling such keywords with `::` suffix.
+
+## [25.1.0] - 2026-02-17
+### Added
+- [#1209], [#1850], [#2619] Debugging SWF in the web browser
+  (Debug listening capability - only for SWFs previously prepared by FFDec)
+- TTF export - setting italic / bold flags in the font
+- ffdec-cli.exe is signed
+- [#2636] AS3 QName properties with nonvalid identifiers handled as strings in brackets
+  (Can be turned on in advanced settings)
+
+### Fixed
+- Metadata formatting
+- [#2632] TTF export - non-zero italic angle
+- Improper standalone player termination, not cleaning temp files
+- [#2636] ActionScript - Incorrect always-break detection causing insertion of while(true)
+- ActionScript - newline after do..while
+- StackOverflow on cyclic characters
+- ConcurrentModification in abc indexing
+
+## [25.0.0] - 2026-02-10
+### Added
+- [#2610] Export morphshapes - export individual frames, setting of morph
+  duration and/or number of morph frames
+- Export morphshapes to GIF and AVI
+- Animated WEBP export for frames, sprites and morphshapes
+- Export dialog - Icons per export type and arrow symbol
+- Updated German translation (AI used)
+- Slovak translation (AI used)
+- APNG (animated PNG) export for frames, sprites and morphshapes
+- Context menu association icon
+- Windows installer (MSI), ffdec.exe, ffdec.jar and ffdec_lib.jar are signed
+- ffdec.exe contains version information (+ on SplashScreen)
+
+### Fixed
+- [#2603] Export Sprite as SWF - sprite frames as timeline frames, without sprite itself
+- HTML5 Canvas morphshape export
+- Slovenian translation
+- [#2626] AS1/2 direct editation - function calls inside `with` statement
+- [#2618] AS1/2 increment/decrement/compound using PushDuplicate
+- [#2611], [#2627] StackOverFlow on opening SWF containing cyclic sprites
+
+### Changed
+- [#2610] Export as SWF - take SWF bounds from the exported item bounds
+- MSI installer instead of setup.exe on Windows
+
+## [24.1.2] - 2026-01-31
+### Added
+- [#2581] Save as SWC through context menu of SWF files (previously only in CLI)
+- Save as EXE through context menu of SWF files (previously only in toolbar)
+- Slovenian translation
+- SVG export - video frames
+- [#2592], [#2154], [#2591], [#2596] - Better handling of antialias conflation artifacts (by scaling),
+  can be enabled in Advanced Settings / Display and Export.
+- [#2608] Updated WEBP image library so now it supports macOS x64
+- [PR228] Association with `.swc` extension
+- Association of file extensions in Windows setup (again)
+
+### Fixed
+- [#2570] NullpointerException on SVG export of DefineEditText
+- [#2570] ClassCastException on exporting sound head (export all command)
+- [#2571] SVG export - StackOverflow for DefineVideoStream
+- [#2575] dumpSWF CLI command displayed import assets GUI dialog
+- [#2573] AS3 - Incorrect uint/int/Number coercion
+- AS3 local registers type propagation
+- [#2566], [#2594] Export bounds of sprites and buttons not containing filter offsets
+- [#2582] Font normalizer setting small texts when no assigned glyph found
+- PDF export - not rendering video stream frames
+- [#2585] AS1/2 direct editation - continue and break in for..in loop
+- [#2589] SVG export - subsprite animation, sprite offsets
+- [#1893] Video - incorrect frame size
+- [#2572] SVG import - incorrect stroke width when transform contains rotation/shear
+- [#2595] FLA export - incorrect handling of imported fonts
+- FLA export - incorrect handling of imported sprites
+- [#2586] AS3 direct editation + decompilation - XML escape sequences and other XML problems
+- [#2600] Sprite/button outline incorrect calculation caused by clipping
+- [#2612] SVG export - handle incorrect surrogate pairs in text
+- [#2612] SVG export - problems with retain shape bounds setting
+- [#2609] JDK 25+ warnings on console about native access
+- [#2473], [#2530] Always-break loops containing breaks (forward gotos)
+
+### Changed
+- [#2575] dumpSWF CLI command only allows single SWF dump (no imports, etc.)
+
+## [24.1.1] - 2025-11-17
+### Added
+- AS3 Document class is underlined and has different icon
+- [#2556] CLI subsprite animation export (`-sublength <length>` option for export)
+- [#2556] CLI option to select arbitrary frames of sprites export via `-select`.
+  Check `--help -select` for details.
+
+### Fixed
+- [#2536] AS3 switches detection incorrectly replaces basic ifs with strict equals
+- [#2536] AS3 switches detection not handling loops
+- [#2536] AS3 regexp highlighting / compilation
+- [#2537] AS1/2/3 direct editation - partial object literal causing lag
+- [#2540] AS3 getlocal after inclocal with different registers incorrectly merged
+- [PR224] Font CLI replace throwing NullPointer
+- [#2546] AS3 findProperty vs temporary registers
+- [#2547] SVG import - improper linearGradient with userSpaceOnUse gradient units
+- [#2545] FLA export - normalize font em square
+- [#2552] Open with FFDec explorer menu shrinking sidebar
+- [#2551] Showing too wide video tags in Flash player producing ValueTooLarge
+  exception. Also truncated video length.
+- [#2550] FLV video import - incorrect frame position caused by wrong FLV tag sort
+- Mac package problems related to BOM file (updated jbomutils library)
+- [#2561] Cannot set filter strength to 128 or above
+- [#2562] ABC explorer not working in some obfuscated code
+- [#2562] P-code not showing in some obfuscated code (NumberContext related)
+
+### Changed
+- Simple editor uses percent as units for filter strength
+
+### Removed
+- Resampling from CLI and all source code
+- [#2541], [#2564] Antialias conflation fixer
+
+## [24.1.0] - 2025-09-28
 ### Added
 - [#2477] Option to disable AS2 detection of uninitialized class fields
 - AS2 detection of uninitialized class fields is cancellable, faster (parallel)
@@ -49,6 +221,8 @@ All notable changes to this project will be documented in this file.
   - fixes zero/1unit spaces font glyph advance
   - fixes zero last glyph advance in texts
 - [PR222] Replace fonts from commandline
+- [#2534] Create new GFX tags of type DefineExternalGradient, DefineGradientMap,
+  ExporterInfo, FontTextureInfo, DefineExternalStreamSound
 
 ### Fixed
 - [#2474] Gotos incorrectly decompiled
@@ -112,6 +286,9 @@ All notable changes to this project will be documented in this file.
 - Font export - not setting ascent and descent
 - [#2471] PDF export - ignore control characters
 - [#2471] SVG export with typeface - white-space:pre style
+- [#1826], [#2416] FLA export - shapes - missing fills when fillStyle0/1 has incorrect orientation
+- [#2532], [#1011], [#2165] FLA export - shapes - missing fills on path crossings, small shapes,
+  Optimized speed of Shape fixer
 
  ### Changed
 - Icon of "Deobfuscation options" menu from pile of pills to medkit
@@ -3830,7 +4007,15 @@ Major version of SWF to XML export changed to 2.
 ### Added
 - Initial public release
 
-[Unreleased]: https://github.com/jindrapetrik/jpexs-decompiler/compare/version24.0.1...dev
+[Unreleased]: https://github.com/jindrapetrik/jpexs-decompiler/compare/version25.1.3...dev
+[25.1.3]: https://github.com/jindrapetrik/jpexs-decompiler/compare/version25.1.2...version25.1.3
+[25.1.2]: https://github.com/jindrapetrik/jpexs-decompiler/compare/version25.1.1...version25.1.2
+[25.1.1]: https://github.com/jindrapetrik/jpexs-decompiler/compare/version25.1.0...version25.1.1
+[25.1.0]: https://github.com/jindrapetrik/jpexs-decompiler/compare/version25.0.0...version25.1.0
+[25.0.0]: https://github.com/jindrapetrik/jpexs-decompiler/compare/version24.1.2...version25.0.0
+[24.1.2]: https://github.com/jindrapetrik/jpexs-decompiler/compare/version24.1.1...version24.1.2
+[24.1.1]: https://github.com/jindrapetrik/jpexs-decompiler/compare/version24.1.0...version24.1.1
+[24.1.0]: https://github.com/jindrapetrik/jpexs-decompiler/compare/version24.0.1...version24.1.0
 [24.0.1]: https://github.com/jindrapetrik/jpexs-decompiler/compare/version24.0.0...version24.0.1
 [24.0.0]: https://github.com/jindrapetrik/jpexs-decompiler/compare/version23.0.1...version24.0.0
 [23.0.1]: https://github.com/jindrapetrik/jpexs-decompiler/compare/version23.0.0...version23.0.1
@@ -4002,6 +4187,65 @@ Major version of SWF to XML export changed to 2.
 [alpha 9]: https://github.com/jindrapetrik/jpexs-decompiler/compare/alpha8...alpha9
 [alpha 8]: https://github.com/jindrapetrik/jpexs-decompiler/compare/alpha7...alpha8
 [alpha 7]: https://github.com/jindrapetrik/jpexs-decompiler/releases/tag/alpha7
+[#2644]: https://www.free-decompiler.com/flash/issues/2644
+[#2648]: https://www.free-decompiler.com/flash/issues/2648
+[#2643]: https://www.free-decompiler.com/flash/issues/2643
+[#2645]: https://www.free-decompiler.com/flash/issues/2645
+[#2514]: https://www.free-decompiler.com/flash/issues/2514
+[#2649]: https://www.free-decompiler.com/flash/issues/2649
+[#2651]: https://www.free-decompiler.com/flash/issues/2651
+[#2653]: https://www.free-decompiler.com/flash/issues/2653
+[#2639]: https://www.free-decompiler.com/flash/issues/2639
+[#2642]: https://www.free-decompiler.com/flash/issues/2642
+[#2636]: https://www.free-decompiler.com/flash/issues/2636
+[#1209]: https://www.free-decompiler.com/flash/issues/1209
+[#1850]: https://www.free-decompiler.com/flash/issues/1850
+[#2619]: https://www.free-decompiler.com/flash/issues/2619
+[#2632]: https://www.free-decompiler.com/flash/issues/2632
+[#2610]: https://www.free-decompiler.com/flash/issues/2610
+[#2603]: https://www.free-decompiler.com/flash/issues/2603
+[#2626]: https://www.free-decompiler.com/flash/issues/2626
+[#2618]: https://www.free-decompiler.com/flash/issues/2618
+[#2611]: https://www.free-decompiler.com/flash/issues/2611
+[#2627]: https://www.free-decompiler.com/flash/issues/2627
+[#2581]: https://www.free-decompiler.com/flash/issues/2581
+[#2592]: https://www.free-decompiler.com/flash/issues/2592
+[#2154]: https://www.free-decompiler.com/flash/issues/2154
+[#2591]: https://www.free-decompiler.com/flash/issues/2591
+[#2596]: https://www.free-decompiler.com/flash/issues/2596
+[#2608]: https://www.free-decompiler.com/flash/issues/2608
+[#2570]: https://www.free-decompiler.com/flash/issues/2570
+[#2571]: https://www.free-decompiler.com/flash/issues/2571
+[#2575]: https://www.free-decompiler.com/flash/issues/2575
+[#2573]: https://www.free-decompiler.com/flash/issues/2573
+[#2566]: https://www.free-decompiler.com/flash/issues/2566
+[#2594]: https://www.free-decompiler.com/flash/issues/2594
+[#2582]: https://www.free-decompiler.com/flash/issues/2582
+[#2585]: https://www.free-decompiler.com/flash/issues/2585
+[#2589]: https://www.free-decompiler.com/flash/issues/2589
+[#1893]: https://www.free-decompiler.com/flash/issues/1893
+[#2572]: https://www.free-decompiler.com/flash/issues/2572
+[#2595]: https://www.free-decompiler.com/flash/issues/2595
+[#2586]: https://www.free-decompiler.com/flash/issues/2586
+[#2600]: https://www.free-decompiler.com/flash/issues/2600
+[#2612]: https://www.free-decompiler.com/flash/issues/2612
+[#2609]: https://www.free-decompiler.com/flash/issues/2609
+[#2473]: https://www.free-decompiler.com/flash/issues/2473
+[#2530]: https://www.free-decompiler.com/flash/issues/2530
+[#2556]: https://www.free-decompiler.com/flash/issues/2556
+[#2536]: https://www.free-decompiler.com/flash/issues/2536
+[#2537]: https://www.free-decompiler.com/flash/issues/2537
+[#2540]: https://www.free-decompiler.com/flash/issues/2540
+[#2546]: https://www.free-decompiler.com/flash/issues/2546
+[#2547]: https://www.free-decompiler.com/flash/issues/2547
+[#2545]: https://www.free-decompiler.com/flash/issues/2545
+[#2552]: https://www.free-decompiler.com/flash/issues/2552
+[#2551]: https://www.free-decompiler.com/flash/issues/2551
+[#2550]: https://www.free-decompiler.com/flash/issues/2550
+[#2561]: https://www.free-decompiler.com/flash/issues/2561
+[#2562]: https://www.free-decompiler.com/flash/issues/2562
+[#2541]: https://www.free-decompiler.com/flash/issues/2541
+[#2564]: https://www.free-decompiler.com/flash/issues/2564
 [#2477]: https://www.free-decompiler.com/flash/issues/2477
 [#2478]: https://www.free-decompiler.com/flash/issues/2478
 [#2485]: https://www.free-decompiler.com/flash/issues/2485
@@ -4012,6 +4256,7 @@ Major version of SWF to XML export changed to 2.
 [#2497]: https://www.free-decompiler.com/flash/issues/2497
 [#2529]: https://www.free-decompiler.com/flash/issues/2529
 [#2471]: https://www.free-decompiler.com/flash/issues/2471
+[#2534]: https://www.free-decompiler.com/flash/issues/2534
 [#2474]: https://www.free-decompiler.com/flash/issues/2474
 [#2480]: https://www.free-decompiler.com/flash/issues/2480
 [#2338]: https://www.free-decompiler.com/flash/issues/2338
@@ -4033,6 +4278,11 @@ Major version of SWF to XML export changed to 2.
 [#2517]: https://www.free-decompiler.com/flash/issues/2517
 [#2522]: https://www.free-decompiler.com/flash/issues/2522
 [#2525]: https://www.free-decompiler.com/flash/issues/2525
+[#1826]: https://www.free-decompiler.com/flash/issues/1826
+[#2416]: https://www.free-decompiler.com/flash/issues/2416
+[#2532]: https://www.free-decompiler.com/flash/issues/2532
+[#1011]: https://www.free-decompiler.com/flash/issues/1011
+[#2165]: https://www.free-decompiler.com/flash/issues/2165
 [#2476]: https://www.free-decompiler.com/flash/issues/2476
 [#2404]: https://www.free-decompiler.com/flash/issues/2404
 [#1418]: https://www.free-decompiler.com/flash/issues/1418
@@ -4058,7 +4308,6 @@ Major version of SWF to XML export changed to 2.
 [#2469]: https://www.free-decompiler.com/flash/issues/2469
 [#2475]: https://www.free-decompiler.com/flash/issues/2475
 [#2427]: https://www.free-decompiler.com/flash/issues/2427
-[#1826]: https://www.free-decompiler.com/flash/issues/1826
 [#2448]: https://www.free-decompiler.com/flash/issues/2448
 [#2370]: https://www.free-decompiler.com/flash/issues/2370
 [#2453]: https://www.free-decompiler.com/flash/issues/2453
@@ -4071,7 +4320,6 @@ Major version of SWF to XML export changed to 2.
 [#2418]: https://www.free-decompiler.com/flash/issues/2418
 [#2397]: https://www.free-decompiler.com/flash/issues/2397
 [#2425]: https://www.free-decompiler.com/flash/issues/2425
-[#2416]: https://www.free-decompiler.com/flash/issues/2416
 [#2394]: https://www.free-decompiler.com/flash/issues/2394
 [#2400]: https://www.free-decompiler.com/flash/issues/2400
 [#2413]: https://www.free-decompiler.com/flash/issues/2413
@@ -4259,7 +4507,6 @@ Major version of SWF to XML export changed to 2.
 [#2031]: https://www.free-decompiler.com/flash/issues/2031
 [#1866]: https://www.free-decompiler.com/flash/issues/1866
 [#503]: https://www.free-decompiler.com/flash/issues/503
-[#1011]: https://www.free-decompiler.com/flash/issues/1011
 [#1257]: https://www.free-decompiler.com/flash/issues/1257
 [#1902]: https://www.free-decompiler.com/flash/issues/1902
 [#1903]: https://www.free-decompiler.com/flash/issues/1903
@@ -4397,7 +4644,6 @@ Major version of SWF to XML export changed to 2.
 [#1564]: https://www.free-decompiler.com/flash/issues/1564
 [#1676]: https://www.free-decompiler.com/flash/issues/1676
 [#1697]: https://www.free-decompiler.com/flash/issues/1697
-[#1893]: https://www.free-decompiler.com/flash/issues/1893
 [#1181]: https://www.free-decompiler.com/flash/issues/1181
 [#1900]: https://www.free-decompiler.com/flash/issues/1900
 [#1897]: https://www.free-decompiler.com/flash/issues/1897
@@ -5225,6 +5471,8 @@ Major version of SWF to XML export changed to 2.
 [#32]: https://www.free-decompiler.com/flash/issues/32
 [#31]: https://www.free-decompiler.com/flash/issues/31
 [#27]: https://www.free-decompiler.com/flash/issues/27
+[PR228]: https://github.com/jindrapetrik/jpexs-decompiler/pull/228
+[PR224]: https://github.com/jindrapetrik/jpexs-decompiler/pull/224
 [PR222]: https://github.com/jindrapetrik/jpexs-decompiler/pull/222
 [PR215]: https://github.com/jindrapetrik/jpexs-decompiler/pull/215
 [PR216]: https://github.com/jindrapetrik/jpexs-decompiler/pull/216

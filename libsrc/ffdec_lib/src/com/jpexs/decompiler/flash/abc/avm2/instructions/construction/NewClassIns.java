@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -63,7 +63,7 @@ public class NewClassIns extends InstructionDefinition {
                 }
             }
         }                
-        obj.toString(writer, LocalData.create(localData.callStack /*??*/, localData.abcIndex, localData.abc, localData.localRegNames, localData.fullyQualifiedNames, new HashSet<>(), ScriptExportMode.AS, localData.swfVersion, localData.usedDeobfuscations));
+        obj.toString(writer, LocalData.create(localData.callStack /*??*/, localData.abcIndex, localData.abc, localData.localRegNames, localData.fullyQualifiedNames, new HashSet<>(), ScriptExportMode.AS, localData.swfVersion, localData.usedDeobfuscations, clsIndex));
         writer.finishHilights();
         String baseType = writer.toString();
         ABC abc = localData.abc;

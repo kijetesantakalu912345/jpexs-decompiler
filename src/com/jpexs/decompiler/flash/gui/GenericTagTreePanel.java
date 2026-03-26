@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS
+ *  Copyright (C) 2010-2026 JPEXS
  * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -353,7 +353,7 @@ public class GenericTagTreePanel extends GenericTagPanel {
                         editor = new EnumEditor(field.getName(), obj, field, index, type, swfType, values);
                     } else if (type.equals(double.class) || type.equals(Double.class)
                             || type.equals(float.class) || type.equals(Float.class)) {
-                        editor = new FloatEditor(field.getName(), obj, field, index, type);
+                        editor = new FloatEditor(field.getName(), obj, field, index, type, swfType);
                     } else if (type.equals(int.class) || type.equals(Integer.class)
                             || type.equals(short.class) || type.equals(Short.class)
                             || type.equals(long.class) || type.equals(Long.class)) {

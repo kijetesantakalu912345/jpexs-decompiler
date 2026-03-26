@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2025 JPEXS, All rights reserved.
+ *  Copyright (C) 2010-2026 JPEXS, All rights reserved.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -41,6 +41,41 @@ public class ActionScript3ClassicDecompileTest extends ActionScript3DecompileTes
                 + "if(arguments.length > 0)\r\n"
                 + "{\r\n"
                 + "trace(arguments[0]);\r\n"
+                + "}\r\n",
+                 false);
+    }
+
+    @Test
+    public void testAlwaysBreak() {
+        decompileMethod("classic", "testAlwaysBreak", "var v:int = 0;\r\n"
+                + "v = 5;\r\n"
+                + "trace(\"a\");\r\n"
+                + "while(true)\r\n"
+                + "{\r\n"
+                + "if(v > 4)\r\n"
+                + "{\r\n"
+                + "trace(\"b\");\r\n"
+                + "if(v > 10)\r\n"
+                + "{\r\n"
+                + "trace(\"c\");\r\n"
+                + "break;\r\n"
+                + "}\r\n"
+                + "trace(\"d\");\r\n"
+                + "}\r\n"
+                + "trace(\"e\");\r\n"
+                + "break;\r\n"
+                + "}\r\n"
+                + "trace(\"f\");\r\n",
+                 false);
+    }
+
+    @Test
+    public void testAndInt() {
+        decompileMethod("classic", "testAndInt", "var a:int = 1;\r\n"
+                + "var b:int = 5;\r\n"
+                + "if(Boolean(0) && (Boolean(1) || Boolean(a < b)))\r\n"
+                + "{\r\n"
+                + "trace(\"okay\");\r\n"
                 + "}\r\n",
                  false);
     }
@@ -392,7 +427,11 @@ public class ActionScript3ClassicDecompileTest extends ActionScript3DecompileTes
                 + "super.prot = 1.5;\r\n"
                 + "super.prot = int(s);\r\n"
                 + "i = super.prot;\r\n"
-                + "s = String(super.prot);\r\n",
+                + "s = String(super.prot);\r\n"
+                + "var a2:* = \"5\";\r\n"
+                + "var s2:String = \"s\";\r\n"
+                + "var i2:int = a2;\r\n"
+                + "a2 = Number(a2);\r\n",
                  false);
     }
 
@@ -550,6 +589,38 @@ public class ActionScript3ClassicDecompileTest extends ActionScript3DecompileTes
                 + "}\r\n"
                 + "while(k < 10);\r\n"
                 + "trace(\"ss\");\r\n",
+                 false);
+    }
+
+    @Test
+    public void testDoWhileTwice() {
+        decompileMethod("classic", "testDoWhileTwice", "var a:int = 1;\r\n"
+                + "var b:int = 2;\r\n"
+                + "do\r\n"
+                + "{\r\n"
+                + "do\r\n"
+                + "{\r\n"
+                + "if(Boolean(a))\r\n"
+                + "{\r\n"
+                + "trace(\"x\");\r\n"
+                + "if(Boolean(b))\r\n"
+                + "{\r\n"
+                + "break;\r\n"
+                + "}\r\n"
+                + "trace(\"y\");\r\n"
+                + "}\r\n"
+                + "trace(\"z\");\r\n"
+                + "}\r\n"
+                + "while(true);\r\n"
+                + "trace(\"g\");\r\n"
+                + "if(Boolean(b))\r\n"
+                + "{\r\n"
+                + "break;\r\n"
+                + "}\r\n"
+                + "trace(\"h\");\r\n"
+                + "}\r\n"
+                + "while(true);\r\n"
+                + "trace(\"finish\");\r\n",
                  false);
     }
 
@@ -1246,6 +1317,24 @@ public class ActionScript3ClassicDecompileTest extends ActionScript3DecompileTes
     }
 
     @Test
+    public void testIfInsteadSwitch() {
+        decompileMethod("classic", "testIfInsteadSwitch", "var a:int = 5;\r\n"
+                + "if(a > 5)\r\n"
+                + "{\r\n"
+                + "if(a === 0)\r\n"
+                + "{\r\n"
+                + "trace(\"X\");\r\n"
+                + "}\r\n"
+                + "}\r\n"
+                + "if(a === 1)\r\n"
+                + "{\r\n"
+                + "return \"A\";\r\n"
+                + "}\r\n"
+                + "return \"B\";\r\n",
+                 false);
+    }
+
+    @Test
     public void testIfTry() {
         decompileMethod("classic", "testIfTry", "var c:int = 0;\r\n"
                 + "var i:int = 0;\r\n"
@@ -1751,7 +1840,7 @@ public class ActionScript3ClassicDecompileTest extends ActionScript3DecompileTes
         decompileMethod("classic", "testNames", "var ns:* = this.getNamespace();\r\n"
                 + "var name:* = this.getName();\r\n"
                 + "var a:* = ns::unnamespacedFunc();\r\n"
-                + "var b:* = ns::[name];\r\n"
+                + "var b:* = ns::[String(name)];\r\n"
                 + "trace(b.c);\r\n"
                 + "var c:* = myInternal::neco;\r\n"
                 + "var d:* = this.myInternal2::neco;\r\n",
@@ -1983,6 +2072,12 @@ public class ActionScript3ClassicDecompileTest extends ActionScript3DecompileTes
                 + "r = n1 / n2 / n3;\r\n"
                 + "trace(\"not a regexp 2\");\r\n"
                 + "r /= n1 / n2;\r\n",
+                 false);
+    }
+
+    @Test
+    public void testResolvingBuildIn() {
+        decompileMethod("classic", "testResolvingBuildIn", "var i:int = \"Hello world\".indexOf(\"world\");\r\n",
                  false);
     }
 
@@ -2225,8 +2320,8 @@ public class ActionScript3ClassicDecompileTest extends ActionScript3DecompileTes
     public void testTernarOperator2() {
         decompileMethod("classic", "testTernarOperator2", "var b:Boolean = true;\r\n"
                 + "var i:int = 1;\r\n"
-                + "var j:int = b ? i : i + 1;\r\n"
-                + "var k:int = Boolean(i) ? j : j + 1;\r\n",
+                + "var j:int = b ? i : int(i + 1);\r\n"
+                + "var k:int = Boolean(i) ? j : int(j + 1);\r\n",
                  false);
     }
 
@@ -2582,7 +2677,6 @@ public class ActionScript3ClassicDecompileTest extends ActionScript3DecompileTes
                 + "trace(\"C\");\r\n"
                 + "}\r\n"
                 + "while(i < 5);\r\n"
-                + "\r\n"
                 + "}\r\n"
                 + "trace(\"E\");\r\n",
                  false);
@@ -2830,6 +2924,36 @@ public class ActionScript3ClassicDecompileTest extends ActionScript3DecompileTes
                 + "</{xtagb}>\r\n"
                 + "</{xtaga}>;\r\n"
                 + "m = myXML.*;\r\n",
+                 false);
+    }
+
+    @Test
+    public void testXml2() {
+        decompileMethod("classic", "testXml2", "var x1:XML = <elem name=\"aaa\" value=\"xxx&#10;\"/>;\r\n"
+                + "var x2:XML = <elem name=\"aaa\" value=\"xxx\"/>;\r\n"
+                + "var x3:XML = <elem name=\"aaa\" value=\"xxx\">\r\n"
+                + "<sub title=\"yyy\">\r\n"
+                + "ampersand: &amp;\r\n"
+                + "</sub>\r\n"
+                + "<sub/>\r\n"
+                + "</elem>;\r\n"
+                + "var x4:XML = <elem>\r\n"
+                + "<elem>\r\n"
+                + "A\r\n"
+                + "</elem>\r\n"
+                + "<elem>\r\n"
+                + "B\r\n"
+                + "</elem>\r\n"
+                + "<elem>\r\n"
+                + "<elem>\r\n"
+                + "C\r\n"
+                + "</elem>\r\n"
+                + "</elem>\r\n"
+                + "</elem>;\r\n"
+                + "var x5:XML = <elem attr=\"abc&#13;&#10;&#9;def\"></elem>;\r\n"
+                + "var x_invalid:XML = new XML(\"<aaa >> invalid \\\"\\n\");\r\n"
+                + "var a:int = 5;\r\n"
+                + "trace(\"B\");\r\n",
                  false);
     }
 }
