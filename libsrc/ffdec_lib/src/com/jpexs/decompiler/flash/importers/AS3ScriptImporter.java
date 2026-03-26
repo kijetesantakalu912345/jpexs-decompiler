@@ -95,6 +95,7 @@ public class AS3ScriptImporter {
         
         if(NewScriptABCContainer != null){
             // TODO: probably sort allFiles alphabetically so that scripts compilng in the wrong order is deterministic.
+            // (i think it already is at least on my machine but in theory .listFiles() can return the files in any order, so i should do it)
             ArrayList<File> allFiles = recursivelySearchDirForScripts(scriptsFolder); 
             ArrayList<String> newScriptContents = new ArrayList<String>();
             ArrayList<ActionScript3Parser.importsAndCustomNamespaces> newScriptDependencies = new ArrayList<ActionScript3Parser.importsAndCustomNamespaces>();
