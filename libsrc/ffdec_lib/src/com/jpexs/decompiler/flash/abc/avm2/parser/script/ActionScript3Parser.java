@@ -3222,22 +3222,22 @@ public class ActionScript3Parser {
                 s = lex();
             }
             expected(s, lexer.yyline(), SymbolType.CURLY_OPEN);
-            publicNs = new NamespaceItem(pkgName, Namespace.KIND_PACKAGE);
-            packageInternalNs = new NamespaceItem(pkgName, Namespace.KIND_PACKAGE_INTERNAL);
+            publicNs = new NamespaceItem(pkgName, Namespace.KIND_PACKAGE, -1);
+            packageInternalNs = new NamespaceItem(pkgName, Namespace.KIND_PACKAGE_INTERNAL, -1);
             s = lex();
             inPackage = true;
         } else {
             publicNs = null;
             // normaly this would be the script index but from looking at usages of parser.addScript() which also have that parameter, it looks like i can get away
             // with just saying it's 0.
-            packageInternalNs = new NamespaceItem(fileName + "$" + 0, Namespace.KIND_PRIVATE);
+            packageInternalNs = new NamespaceItem(fileName + "$" + 0, Namespace.KIND_PRIVATE, -1);
         }
         lexer.pushback(s);
 
         allOpenedNamespaces.add(openedNamespaces);
-        NamespaceItem emptyNs = new NamespaceItem("", Namespace.KIND_PACKAGE);
+        NamespaceItem emptyNs = new NamespaceItem("", Namespace.KIND_PACKAGE, -1);
         openedNamespaces.add(emptyNs);
-        NamespaceItem as3Ns = new NamespaceItem(AS3_NAMESPACE, Namespace.KIND_NAMESPACE);
+        NamespaceItem as3Ns = new NamespaceItem(AS3_NAMESPACE, Namespace.KIND_NAMESPACE, -1);
         as3Ns.forceResolve(abcIndex);
         openedNamespaces.add(as3Ns);
 
